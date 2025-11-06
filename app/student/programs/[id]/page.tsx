@@ -23,7 +23,7 @@ import {
   FaTrophy
 } from 'react-icons/fa';
 import { programsService } from '@/lib/firebase/services/programsService';
-import { assignmentsService } from '@/lib/firebase/services/assignmentsService';
+import { assignmentService } from '@/lib/firebase/services/assignmentsService';
 import { Program, Module, Activity } from '@/types';
 import { Assignment } from '@/types/assignments.types';
 
@@ -63,7 +63,7 @@ export default function StudentProgramPage() {
       // Buscar programa e assignment
       const [program, assignments] = await Promise.all([
         programsService.getProgramById(programId),
-        assignmentsService.getStudentAssignments(student!.id)
+        assignmentService.getStudentAssignments(student!.id)
       ]);
 
       if (!program) {
