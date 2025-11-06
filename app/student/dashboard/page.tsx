@@ -103,7 +103,7 @@ export default function StudentDashboard() {
     const totalActivities = program.modules?.reduce((total, module) =>
       total + (module.activities?.length || 0), 0) || 0;
 
-    const completedActivities = assignment.progress?.completedActivities?.length || 0;
+    const completedActivities = assignment.completedActivities?.length || 0;
     const progress = totalActivities > 0 ? Math.round((completedActivities / totalActivities) * 100) : 0;
 
     return { progress, completedActivities, totalActivities };

@@ -84,7 +84,7 @@ export default function StudentOverview({
     const totalActivities = program.modules?.reduce((total, module) => 
       total + (module.activities?.length || 0), 0) || 0;
     
-    const completedActivities = assignment.progress?.completedActivities?.length || 0;
+    const completedActivities = assignment.completedActivities?.length || 0;
     const progress = totalActivities > 0 ? Math.round((completedActivities / totalActivities) * 100) : 0;
 
     // Encontrar próxima atividade não concluída
@@ -92,7 +92,7 @@ export default function StudentOverview({
     if (progress < 100) {
       for (const module of program.modules || []) {
         for (const activity of module.activities || []) {
-          if (!assignment.progress?.completedActivities?.includes(activity.id)) {
+          if (!assignment.completedActivities?.includes(activity.id)) {
             nextActivity = {
               ...activity,
               moduleId: module.id,
