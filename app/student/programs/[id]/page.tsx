@@ -73,7 +73,7 @@ export default function StudentProgramPage() {
 
       // Encontrar assignment específico para este programa
       const assignment = assignments.find(a => a.programId === programId);
-      
+
       if (!assignment) {
         setError('Você não tem acesso a este programa');
         return;
@@ -102,7 +102,7 @@ export default function StudentProgramPage() {
     program.modules?.forEach(module => {
       const totalActivities = module.activities?.length || 0;
       const completedActivities = module.activities?.filter(activity =>
-        assignment.progress?.completedActivities?.includes(activity.id)
+        assignment.completedActivities?.includes(activity.id)
       ).length || 0;
 
       progress[module.id] = {
@@ -129,8 +129,8 @@ export default function StudentProgramPage() {
 
   const getActivityStatus = (activityId: string) => {
     if (!programData) return 'locked';
-    
-    const isCompleted = programData.assignment.progress?.completedActivities?.includes(activityId);
+
+    const isCompleted = programData.assignment.completedActivities.includes(activityId);
     return isCompleted ? 'completed' : 'available';
   };
 
@@ -144,7 +144,7 @@ export default function StudentProgramPage() {
 
     for (const module of programData.program.modules || []) {
       for (const activity of module.activities || []) {
-        if (!programData.assignment.progress?.completedActivities?.includes(activity.id)) {
+        if (!programData.assignment.completedActivities.includes(activity.id)) {
           return {
             activity,
             moduleId: module.id,
@@ -185,7 +185,7 @@ export default function StudentProgramPage() {
   }
 
   const { program, assignment, moduleProgress } = programData;
-  const totalProgress = program.modules?.reduce((total, module) => 
+  const totalProgress = program.modules?.reduce((total, module) =>
     total + (moduleProgress[module.id]?.progress || 0), 0) / (program.modules?.length || 1);
 
   return (
@@ -197,7 +197,7 @@ export default function StudentProgramPage() {
             <FaArrowLeft size={16} />
             Voltar
           </BackButton>
-          
+
           <ProgramInfo>
             <ProgramIcon>{program.icon || '📚'}</ProgramIcon>
             <ProgramDetails>
@@ -212,8 +212,8 @@ export default function StudentProgramPage() {
                 </Stat>
                 <Stat>
                   <FaTrophy size={14} />
-                  {program.modules?.reduce((total, module) => 
-                    total + (module.activities?.reduce((sum, activity) => 
+                  {program.modules?.reduce((total, module) =>
+                    total + (module.activities?.reduce((sum, activity) =>
                       sum + (activity.points || 0), 0) || 0), 0) || 0} pontos
                 </Stat>
                 <Stat>
@@ -224,11 +224,11 @@ export default function StudentProgramPage() {
           </ProgramInfo>
 
           {nextActivity && (
-            <ContinueButton 
+            <ContinueButton
               onClick={() => handleStartActivity(nextActivity.moduleId, nextActivity.activity.id)}
             >
               <FaPlay size={16} />
-              {assignment.progress?.completedActivities?.length === 0 ? 'Começar' : 'Continuar'}
+              {assignment.completedActivities.length === 0 ? 'Começar' : 'Continuar'}
             </ContinueButton>
           )}
         </HeaderContent>
@@ -240,13 +240,13 @@ export default function StudentProgramPage() {
             <ProgressValue>{Math.round(totalProgress)}%</ProgressValue>
           </ProgressInfo>
           <ProgressBar>
-            <ProgressFill 
-              $progress={totalProgress} 
+            <ProgressFill
+              $progress={totalProgress}
               $color={program.color}
             />
           </ProgressBar>
           <ActivitiesSummary>
-            {assignment.progress?.completedActivities?.length || 0} atividades concluídas
+            {assignment.completedActivities.length || 0} atividades concluídas
           </ActivitiesSummary>
         </ProgressSection>
       </ProgramHeader>
@@ -254,7 +254,7 @@ export default function StudentProgramPage() {
       {/* Lista de Módulos */}
       <ModulesContainer>
         <SectionTitle>Módulos do Programa</SectionTitle>
-        
+
         {program.modules?.map((module, moduleIndex) => (
           <ModuleCard key={module.id} $locked={module.isLocked}>
             <ModuleHeader>
@@ -265,11 +265,11 @@ export default function StudentProgramPage() {
                   {module.description}
                 </ModuleDescription>
                 <ModuleStats>
-                  {moduleProgress[module.id]?.completed || 0} de {moduleProgress[module.id]?.total || 0} atividades • 
+                  {moduleProgress[module.id]?.completed || 0} de {moduleProgress[module.id]?.total || 0} atividades •
                   {module.activities?.reduce((total, activity) => total + (activity.estimatedTime || 0), 0)}min
                 </ModuleStats>
               </ModuleInfo>
-              
+
               <ModuleStatus>
                 {module.isLocked ? (
                   <LockedStatus>
@@ -295,9 +295,9 @@ export default function StudentProgramPage() {
                   const ActivityIcon = getActivityIcon(activity.type);
                   const status = getActivityStatus(activity.id);
                   const isCompleted = status === 'completed';
-                  
+
                   return (
-                    <ActivityItem 
+                    <ActivityItem
                       key={activity.id}
                       $completed={isCompleted}
                       $clickable={!isCompleted}
@@ -321,7 +321,7 @@ export default function StudentProgramPage() {
                             {activity.points} pts
                           </ActivityPoints>
                         </ActivityHeader>
-                        
+
                         <ActivityDetails>
                           <ActivityType>{activity.type}</ActivityType>
                           <ActivityTime>{activity.estimatedTime}min</ActivityTime>
