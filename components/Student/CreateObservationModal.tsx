@@ -11,13 +11,15 @@ interface CreateObservationModalProps {
   onSubmit: (data: {
     text: string;
     authorType: ObservationType;
-    formData: {
-      energyLevel: string;
-      attentionLevel: string;
-      participation: string;
-      mood: string;
-      behavior: string;
-      academicPerformance: string;
+    isPrivate: boolean;
+    tags: string[];
+    formData?: {
+      energyLevel?: string;
+      attentionLevel?: string;
+      participation?: string;
+      mood?: string;
+      behavior?: string;
+      academicPerformance?: string;
     };
   }) => void;
   onCancel: () => void;
@@ -31,7 +33,7 @@ export default function CreateObservationModal({
   isSubmitting
 }: CreateObservationModalProps) {
   const { user } = useAuth();
-  
+
   // Tipo de observação automático baseado no role do profissional
   const getAutoObservationType = (): ObservationType => {
     switch (user?.role) {
@@ -49,9 +51,9 @@ export default function CreateObservationModal({
   };
 
   const authorType = getAutoObservationType();
-  
+
   const [text, setText] = useState('');
-  
+
   // Campos do formulário estruturado - TODOS OBRIGATÓRIOS
   const [formData, setFormData] = useState({
     energyLevel: '',
@@ -64,7 +66,7 @@ export default function CreateObservationModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!text.trim()) {
       alert('Por favor, escreva a observação.');
       return;
@@ -83,7 +85,9 @@ export default function CreateObservationModal({
     const submissionData = {
       text: text.trim(),
       authorType,
-      formData
+      isPrivate: false, // padrão: visível a todos
+      tags: [],         // você pode mudar depois se quiser suportar tags
+      formData,
     };
 
     onSubmit(submissionData);
