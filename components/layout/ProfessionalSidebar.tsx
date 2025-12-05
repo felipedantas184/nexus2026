@@ -1,3 +1,4 @@
+// components/layout/ProfessionalSidebar.tsx - ATUALIZADO
 'use client';
 
 import { 
@@ -8,7 +9,8 @@ import {
   FaStickyNote,
   FaCog,
   FaUserPlus,
-  FaSchool
+  FaSchool,
+  FaCalendarAlt // ← NOVO ÍCONE
 } from 'react-icons/fa';
 import styled from 'styled-components';
 import Link from 'next/link';
@@ -27,6 +29,7 @@ export default function ProfessionalSidebar({ open = true, user }: ProfessionalS
     { icon: FaHome, label: 'Dashboard', href: '/professional/dashboard' },
     { icon: FaUsers, label: 'Alunos', href: '/professional/students' },
     { icon: FaBook, label: 'Programas', href: '/professional/programs' },
+    { icon: FaCalendarAlt, label: 'Cronogramas', href: '/professional/schedules' }, // ← NOVO ITEM
     { icon: FaChartLine, label: 'Relatórios', href: '/professional/reports' },
     { icon: FaStickyNote, label: 'Observações', href: '/professional/observations' },
   ];
@@ -87,6 +90,10 @@ export default function ProfessionalSidebar({ open = true, user }: ProfessionalS
             <FaBook size={14} />
             Novo Programa
           </ActionButton>
+          <ActionButton href="/professional/schedules/create"> {/* ← NOVO BOTÃO */}
+            <FaCalendarAlt size={14} />
+            Novo Cronograma
+          </ActionButton>
         </QuickActions>
 
         {/* Settings */}
@@ -101,6 +108,7 @@ export default function ProfessionalSidebar({ open = true, user }: ProfessionalS
   );
 }
 
+// Os estilos permanecem os mesmos...
 const Container = styled.nav<{ open: boolean }>`
   background: linear-gradient(180deg, #0A3D62 0%, #1E4D76 100%);
   width: 280px;

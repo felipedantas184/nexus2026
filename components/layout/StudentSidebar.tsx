@@ -1,15 +1,16 @@
 // components/layout/StudentSidebar.tsx
 'use client';
 
-import { 
-  FaHome, 
-  FaBook, 
-  FaChartLine, 
+import {
+  FaHome,
+  FaBook,
+  FaChartLine,
   FaCalendar,
   FaTrophy,
   FaFire,
   FaCheckCircle,
-  FaCog
+  FaCog,
+  FaCalendarAlt
 } from 'react-icons/fa';
 import styled from 'styled-components';
 import Link from 'next/link';
@@ -28,6 +29,7 @@ export default function StudentSidebar({ open = true, student }: StudentSidebarP
     { icon: FaHome, label: 'Dashboard', href: '/student/dashboard' },
     { icon: FaBook, label: 'Meus Programas', href: '/student/programs' },
     { icon: FaFire, label: 'Hábitos Diários', href: '/student/habits' },
+    { icon: FaCalendarAlt, label: 'Cronogramas', href: '/student/schedules' }, // ← NOVO ITEM
     { icon: FaCalendar, label: 'Calendário', href: '/student/calendar' },
     { icon: FaTrophy, label: 'Conquistas', href: '/student/achievements' },
     { icon: FaChartLine, label: 'Meu Progresso', href: '/student/progress' },
@@ -65,7 +67,7 @@ export default function StudentSidebar({ open = true, student }: StudentSidebarP
               <StreakLabel>Dias seguidos</StreakLabel>
             </StreakInfo>
           </StreakCard>
-          
+
           <QuickStats>
             <QuickStat>
               <StatValue>12</StatValue>
@@ -268,7 +270,7 @@ const MenuItem = styled.li`
   }
 `;
 
-const PageLink = styled(Link)<{ active: boolean }>`
+const PageLink = styled(Link) <{ active: boolean }>`
   padding: 12px 16px;
   display: flex;
   align-items: center;

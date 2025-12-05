@@ -84,14 +84,18 @@ export type Activity = TextActivity | ChecklistActivity | VideoActivity | QuizAc
 
 // Atividade com status do aluno
 export interface StudentActivity {
-  activity: Activity;
+  id: string;                     // ← ADICIONAR
+  activityId: string;             // ← ADICIONAR
+  activity?: Activity;            // ← permanece opcional
   status: ActivityStatus;
   studentId: string;
   programId: string;
   moduleId: string;
   startedAt?: Date;
   completedAt?: Date;
-  timeSpent: number; // em minutos
-  answers?: any; // Respostas do quiz/submissões
-  notes?: string; // Anotações do aluno
+  timeSpent: number;
+  answers?: any;
+  notes?: string;
+  createdAt: Date;                // ← ADICIONAR
+  updatedAt: Date;                // ← ADICIONAR
 }

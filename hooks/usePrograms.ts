@@ -13,7 +13,7 @@ export const usePrograms = () => {
   // Carregar programas do profissional
   const loadPrograms = async () => {
     if (!user) return;
-    
+
     try {
       setLoading(true);
       setError(null);
@@ -35,7 +35,7 @@ export const usePrograms = () => {
         ...programData,
         createdBy: user.id
       });
-      
+
       // Recarregar a lista de programas
       await loadPrograms();
       return programId;
@@ -48,7 +48,7 @@ export const usePrograms = () => {
   const updateProgram = async (programId: string, updates: Partial<Program>) => {
     try {
       await programsService.updateProgram(programId, updates);
-      
+
       // Atualizar localmente
       setPrograms(prev => prev.map(program =>
         program.id === programId ? { ...program, ...updates, updatedAt: new Date() } : program
@@ -80,10 +80,25 @@ export const usePrograms = () => {
   // Criar atividade
   const createActivity = async (activityData: Omit<Activity, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      const activityId = await activitiesService.createActivity(activityData);
+      console.log('Criando atividade:', activityData);
+
+      // Garantir que temos os dados mínimos necessários
+      const completeActivityData = {
+        ...activityData,
+        // Garantir valores padrão
+        points: activityData.points || 10,
+        estimatedTime: activityData.estimatedTime || 15,
+        isRequired: activityData.isRequired !== undefined ? activityData.isRequired : true,
+        order: activityData.order || 1
+      };
+
+      const activityId = await activitiesService.createActivity(completeActivityData);
+      console.log('Atividade criada com ID:', activityId);
+
       return activityId;
     } catch (err: any) {
-      throw new Error(err.message);
+      console.error('Erro detalhado ao criar atividade:', err);
+      throw new Error(err.message || 'Erro ao criar atividade');
     }
   };
 

@@ -1,8 +1,7 @@
-// app/student/dashboard/page.tsx
+// app/student/dashboard/page.tsx - VERSÃO ATUALIZADA
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import { useState, useEffect, useContext } from 'react';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Link from 'next/link';
 import styled from 'styled-components';
@@ -17,13 +16,26 @@ import {
   FaBook,
   FaRocket,
   FaCalendar,
-  FaAward
+  FaAward,
+  FaCalendarDay,
+  FaList,
+  FaVideo,
+  FaFileAlt,
+  FaQuestionCircle,
+  FaSync,
+  FaArrowRight,
+  FaBell,
+  FaLightbulb,
+  FaCrown
 } from 'react-icons/fa';
 import { programsService } from '@/lib/firebase/services/programsService';
-import { assignmentsService } from '@/lib/firebase/services/programsService';
-import { Student, Program } from '@/types';
+import { schedulesService } from '@/lib/firebase/services/schedulesService';
+import { progressService } from '@/lib/firebase/services/progressService';
+import { Program } from '@/types';
 import { Assignment } from '@/types/assignments.types';
+import { WeeklySchedule, ScheduleActivity } from '@/types/schedule.types';
 import { assignmentService } from '@/lib/firebase/services/assignmentsService';
+import { useAuth } from '@/context/AuthContext';
 
 interface ProgramWithProgress {
   program: Program;
@@ -33,12 +45,48 @@ interface ProgramWithProgress {
   totalActivities: number;
 }
 
+interface TodayActivity {
+  id: string;
+  scheduleId: string;
+  scheduleTitle: string;
+  scheduleColor: string;
+  day: string;
+  activity: ScheduleActivity;
+  completed: boolean;
+  estimatedTime: number;
+  points: number;
+  type: string;
+}
+
+interface DashboardStats {
+  totalPoints: number;
+  currentLevel: number;
+  currentStreak: number;
+  completedPrograms: number;
+  completedActivities: number;
+  totalActivities: number;
+  todayCompletion: number;
+  scheduleCompletion: Record<string, number>;
+}
+
 export default function StudentDashboard() {
   const { user, student } = useAuth();
   const [programs, setPrograms] = useState<ProgramWithProgress[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [todaysActivities, setTodaysActivities] = useState<any[]>([]);
+  const [schedules, setSchedules] = useState<WeeklySchedule[]>([]);
+  const [todaysActivities, setTodaysActivities] = useState<TodayActivity[]>([]);
   const [recentAchievements, setRecentAchievements] = useState<any[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats>({
+    totalPoints: 0,
+    currentLevel: 1,
+    currentStreak: 0,
+    completedPrograms: 0,
+    completedActivities: 0,
+    totalActivities: 0,
+    todayCompletion: 0,
+    scheduleCompletion: {}
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [todaysDate] = useState(new Date());
 
   useEffect(() => {
     if (student?.id) {
@@ -50,43 +98,37 @@ export default function StudentDashboard() {
     try {
       setIsLoading(true);
 
-      // Buscar assignments do aluno
-      const assignments = await assignmentService.getStudentAssignments(student!.id);
+      // Buscar dados em paralelo para melhor performance
+      const [
+        assignments,
+        studentSchedules,
+        overallProgress
+      ] = await Promise.all([
+        assignmentService.getStudentAssignments(student!.id),
+        schedulesService.getStudentSchedules(student!.id),
+        progressService.getStudentOverallProgress(student!.id)
+      ]);
 
-      // Para cada assignment, buscar dados do programa e calcular progresso
-      const programsWithProgress = await Promise.all(
-        assignments.map(async (assignment) => {
-          const program = await programsService.getProgramById(assignment.programId);
-          const progressData = await calculateProgramProgress(assignment, program);
+      // Processar programas
+      const programsWithProgress = await processPrograms(assignments);
+      setPrograms(programsWithProgress);
 
-          return {
-            program,
-            assignment,
-            ...progressData
-          };
-        })
+      // Processar cronogramas e atividades do dia
+      const todayActivitiesData = await processTodaysActivities(studentSchedules);
+      setTodaysActivities(todayActivitiesData);
+      setSchedules(studentSchedules);
+
+      // Calcular estatísticas
+      const stats = await calculateDashboardStats(
+        programsWithProgress,
+        studentSchedules,
+        overallProgress,
+        todayActivitiesData
       );
+      setDashboardStats(stats);
 
-      // Filtrar programas não nulos e ordenar por progresso
-      const validPrograms = programsWithProgress
-        .filter(p => p.program !== null)
-        .sort((a, b) => b.progress - a.progress) as ProgramWithProgress[];
-
-      setPrograms(validPrograms);
-
-      // Mock data para atividades do dia e conquistas (será substituído por dados reais)
-      setTodaysActivities([
-        { id: '1', title: 'Matemática Básica', type: 'quiz', progress: 100, completed: true, program: 'Matemática' },
-        { id: '2', title: 'Leitura Diária', type: 'habit', progress: 100, completed: true, program: 'Hábitos' },
-        { id: '3', title: 'História do Brasil', type: 'text', progress: 75, completed: false, program: 'História' },
-        { id: '4', title: 'Exercícios Físicos', type: 'habit', progress: 0, completed: false, program: 'Saúde' },
-      ]);
-
-      setRecentAchievements([
-        { id: '1', name: 'Primeira Atividade', icon: FaStar, points: 50, unlockedAt: new Date() },
-        { id: '2', name: '3 Dias Consecutivos', icon: FaFire, points: 100, unlockedAt: new Date() },
-        { id: '3', name: 'Programa Completo', icon: FaTrophy, points: 200, unlockedAt: new Date() },
-      ]);
+      // Carregar conquistas (mock por enquanto)
+      loadAchievements();
 
     } catch (error) {
       console.error('Erro ao carregar dados do aluno:', error);
@@ -95,11 +137,94 @@ export default function StudentDashboard() {
     }
   };
 
-  const calculateProgramProgress = async (assignment: Assignment, program: Program | null): Promise<{ progress: number; completedActivities: number; totalActivities: number }> => {
-    if (!program) {
-      return { progress: 0, completedActivities: 0, totalActivities: 0 };
-    }
+  const processPrograms = async (assignments: Assignment[]): Promise<ProgramWithProgress[]> => {
+    const programsWithProgress = await Promise.all(
+      assignments.map(async (assignment) => {
+        try {
+          const program = await programsService.getProgramById(assignment.programId);
+          if (!program) return null;
 
+          const progressData = await calculateProgramProgress(assignment, program);
+
+          return {
+            program,
+            assignment,
+            ...progressData
+          };
+        } catch (error) {
+          console.error(`Erro ao processar programa ${assignment.programId}:`, error);
+          return null;
+        }
+      })
+    );
+
+    return programsWithProgress
+      .filter((p): p is ProgramWithProgress => p !== null)
+      .sort((a, b) => b.progress - a.progress);
+  };
+
+  const processTodaysActivities = async (schedules: WeeklySchedule[]): Promise<TodayActivity[]> => {
+    const today = new Date().getDay();
+    const dayMap: { [key: number]: string } = {
+      1: 'monday', 2: 'tuesday', 3: 'wednesday',
+      4: 'thursday', 5: 'friday', 6: 'saturday', 0: 'sunday'
+    };
+    const todayKey = dayMap[today];
+
+    const activities: TodayActivity[] = [];
+
+    // Buscar progresso do aluno uma vez para todos os cronogramas
+    const allProgress = await Promise.all(
+      schedules.map(async (schedule) => {
+        try {
+          const progress = await progressService.getStudentScheduleProgress(student!.id, schedule.id);
+          return { scheduleId: schedule.id, progress };
+        } catch (error) {
+          console.error(`Erro ao buscar progresso do cronograma ${schedule.id}:`, error);
+          return { scheduleId: schedule.id, progress: {} };
+        }
+      })
+    );
+
+    const progressMap = Object.fromEntries(
+      allProgress.map(p => [p.scheduleId, p.progress])
+    );
+
+    schedules.forEach(schedule => {
+      if (!schedule.isActive) return;
+
+      const todaySchedule = schedule.weekDays.find(day => day.day === todayKey);
+      if (!todaySchedule || todaySchedule.activities.length === 0) return;
+
+      const scheduleProgress = progressMap[schedule.id] || {};
+
+      todaySchedule.activities.forEach(activity => {
+        activities.push({
+          id: activity.id,
+          scheduleId: schedule.id,
+          scheduleTitle: schedule.title,
+          scheduleColor: schedule.color,
+          day: todayKey,
+          activity,
+          completed: !!scheduleProgress[activity.id]?.completed,
+          estimatedTime: activity.estimatedTime || 15,
+          points: activity.points || 10,
+          type: activity.type
+        });
+      });
+    });
+
+    // Ordenar por: não completadas primeiro, depois por hora estimada
+    return activities.sort((a, b) => {
+      if (a.completed !== b.completed) return a.completed ? 1 : -1;
+      return a.estimatedTime - b.estimatedTime;
+    });
+  };
+
+  const calculateProgramProgress = async (
+    assignment: Assignment,
+    program: Program
+  ): Promise<{ progress: number; completedActivities: number; totalActivities: number }> => {
     const totalActivities = program.modules?.reduce((total, module) =>
       total + (module.activities?.length || 0), 0) || 0;
 
@@ -109,325 +234,529 @@ export default function StudentDashboard() {
     return { progress, completedActivities, totalActivities };
   };
 
-  const studentStats = {
-    totalPoints: student?.totalPoints || 0,
-    currentLevel: student?.level || 1,
-    currentStreak: student?.streak || 0,
-    completedPrograms: programs.filter(p => p.progress === 100).length,
-    completedActivities: programs.reduce((total, p) => total + p.completedActivities, 0),
-    totalActivities: programs.reduce((total, p) => total + p.totalActivities, 0)
+  const calculateDashboardStats = async (
+    programs: ProgramWithProgress[],
+    schedules: WeeklySchedule[],
+    overallProgress: any[],
+    todayActivities: TodayActivity[]
+  ): Promise<DashboardStats> => {
+    // Estatísticas dos programas
+    const completedPrograms = programs.filter(p => p.progress === 100).length;
+    const completedActivities = programs.reduce((total, p) => total + p.completedActivities, 0);
+    const totalActivities = programs.reduce((total, p) => total + p.totalActivities, 0);
+
+    // Estatísticas dos cronogramas
+    const scheduleCompletion: Record<string, number> = {};
+
+    for (const schedule of schedules) {
+      try {
+        const stats = await schedulesService.getScheduleProgressStats(schedule.id, student!.id);
+        scheduleCompletion[schedule.id] = stats.completionPercentage;
+      } catch (error) {
+        scheduleCompletion[schedule.id] = 0;
+      }
+    }
+
+    // Estatísticas do dia
+    const completedToday = todayActivities.filter(a => a.completed).length;
+    const todayCompletion = todayActivities.length > 0
+      ? Math.round((completedToday / todayActivities.length) * 100)
+      : 0;
+
+    return {
+      totalPoints: student?.totalPoints || 0,
+      currentLevel: student?.level || 1,
+      currentStreak: student?.streak || 0,
+      completedPrograms,
+      completedActivities,
+      totalActivities,
+      todayCompletion,
+      scheduleCompletion
+    };
   };
 
-  const todayProgress = studentStats.totalActivities > 0
-    ? Math.round((todaysActivities.filter(a => a.completed).length / todaysActivities.length) * 100)
-    : 0;
+  const loadAchievements = async () => {
+    // Mock data - será substituído por serviço real de conquistas
+    const mockAchievements = [
+      { id: '1', name: 'Primeira Atividade', icon: FaStar, points: 50, unlockedAt: new Date(), description: 'Complete sua primeira atividade' },
+      { id: '2', name: '3 Dias Consecutivos', icon: FaFire, points: 100, unlockedAt: new Date(), description: 'Mantenha uma sequência de 3 dias' },
+      { id: '3', name: 'Mestre dos Cronogramas', icon: FaCalendar, points: 200, unlockedAt: new Date(), description: 'Complete um cronograma inteiro' },
+      { id: '4', name: 'Aprendiz Dedicado', icon: FaBook, points: 150, unlockedAt: new Date(), description: 'Complete 10 atividades' },
+    ];
+    setRecentAchievements(mockAchievements);
+  };
+
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'text': return <FaFileAlt size={14} />;
+      case 'quiz': return <FaQuestionCircle size={14} />;
+      case 'video': return <FaVideo size={14} />;
+      case 'checklist': return <FaList size={14} />;
+      case 'file': return <FaFileAlt size={14} />;
+      case 'habit': return <FaSync size={14} />;
+      default: return <FaStar size={14} />;
+    }
+  };
+
+  const getTimeOfDayGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Bom dia';
+    if (hour < 18) return 'Boa tarde';
+    return 'Boa noite';
+  };
+
+  const getMotivationalMessage = () => {
+    const messages = [
+      "Cada pequeno passo conta! 💪",
+      "Você está mais próximo do que imagina! ✨",
+      "A consistência é a chave do sucesso! 🔑",
+      "Hoje é um ótimo dia para aprender! 📚",
+      "Seu progresso é inspirador! 🌟"
+    ];
+    return messages[Math.floor(Math.random() * messages.length)];
+  };
 
   if (isLoading) {
     return (
       <LoadingContainer>
         <LoadingSpinner />
-        <LoadingText>Carregando seu dashboard...</LoadingText>
+        <LoadingText>Preparando seu dashboard...</LoadingText>
       </LoadingContainer>
     );
   }
 
   return (
     <Container>
-      {/* Header com Boas-vindas e Estatísticas */}
-      <Header>
-        <WelcomeSection>
-          <WelcomeTitle>
-            Olá, {student?.name || 'Estudante'}! 👋
-          </WelcomeTitle>
-          <WelcomeSubtitle>
-            Continue sua jornada de aprendizado
-          </WelcomeSubtitle>
-        </WelcomeSection>
+      {/* Header com Boas-vindas Personalizada */}
+      <WelcomeBanner>
+        <WelcomeContent>
+          <WelcomeHeader>
+            <WelcomeTitle>
+              {getTimeOfDayGreeting()}, {student?.name?.split(' ')[0] || 'Estudante'}!
+              <CrownIcon>
+                <FaCrown />
+              </CrownIcon>
+            </WelcomeTitle>
+            <WelcomeSubtitle>{getMotivationalMessage()}</WelcomeSubtitle>
+          </WelcomeHeader>
+
+          <DateDisplay>
+            <FaCalendarDay />
+            {todaysDate.toLocaleDateString('pt-BR', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric'
+            })}
+          </DateDisplay>
+        </WelcomeContent>
 
         <StatsOverview>
-          <StatCard $color="#10b981">
-            <StatIcon>
+          <StatCard $color="#6366f1" $gradient>
+            <StatIcon $color="#6366f1">
               <FaTrophy />
             </StatIcon>
             <StatInfo>
-              <StatValue>{studentStats.totalPoints}</StatValue>
-              <StatLabel>Pontos</StatLabel>
+              <StatValue>{dashboardStats.totalPoints}</StatValue>
+              <StatLabel>Pontos Totais</StatLabel>
             </StatInfo>
           </StatCard>
 
-          <StatCard $color="#6366f1">
-            <StatIcon>
-              <FaChartLine />
-            </StatIcon>
-            <StatInfo>
-              <StatValue>Nível {studentStats.currentLevel}</StatValue>
-              <StatLabel>Progresso</StatLabel>
-            </StatInfo>
-          </StatCard>
-
-          <StatCard $color="#f59e0b">
-            <StatIcon>
+          <StatCard $color="#10b981" $gradient>
+            <StatIcon $color="#10b981">
               <FaFire />
             </StatIcon>
             <StatInfo>
-              <StatValue>{studentStats.currentStreak}</StatValue>
+              <StatValue>{dashboardStats.currentStreak}</StatValue>
               <StatLabel>Dias Consecutivos</StatLabel>
             </StatInfo>
           </StatCard>
 
-          <StatCard $color="#8b5cf6">
-            <StatIcon>
+          <StatCard $color="#8b5cf6" $gradient>
+            <StatIcon $color="#8b5cf6">
+              <FaChartLine />
+            </StatIcon>
+            <StatInfo>
+              <StatValue>Nível {dashboardStats.currentLevel}</StatValue>
+              <StatLabel>Seu Nível</StatLabel>
+            </StatInfo>
+          </StatCard>
+
+          <StatCard $color="#f59e0b" $gradient>
+            <StatIcon $color="#f59e0b">
               <FaCheckCircle />
             </StatIcon>
             <StatInfo>
-              <StatValue>{studentStats.completedActivities}/{studentStats.totalActivities}</StatValue>
-              <StatLabel>Atividades</StatLabel>
+              <StatValue>{dashboardStats.todayCompletion}%</StatValue>
+              <StatLabel>Hoje</StatLabel>
             </StatInfo>
           </StatCard>
         </StatsOverview>
-      </Header>
+      </WelcomeBanner>
 
       <ContentGrid>
-        {/* Seção de Progresso de Hoje */}
-        <TodayProgress>
+        {/* SEÇÃO PRINCIPAL: ATIVIDADES DE HOJE */}
+        <MainSection>
           <SectionHeader>
-            <SectionTitle>Progresso de Hoje</SectionTitle>
-            <ProgressPercentage>{todayProgress}%</ProgressPercentage>
+            <SectionTitle>
+              <FaCalendarDay size={20} />
+              Suas Atividades de Hoje
+            </SectionTitle>
+            <SectionBadge>
+              {todaysActivities.filter(a => a.completed).length}/{todaysActivities.length}
+            </SectionBadge>
           </SectionHeader>
 
-          <ProgressBar>
-            <ProgressFill $progress={todayProgress} />
-          </ProgressBar>
-
-          <ActivitiesList>
-            {todaysActivities.map((activity) => (
-              <ActivityItem key={activity.id} $completed={activity.completed}>
-                <ActivityIcon $completed={activity.completed}>
-                  {activity.completed ? <FaCheckCircle /> : <FaClock />}
-                </ActivityIcon>
-                <ActivityInfo>
-                  <ActivityTitle>{activity.title}</ActivityTitle>
-                  <ActivityDetails>
-                    <ActivityType>{activity.type}</ActivityType>
-                    <ActivityProgram>{activity.program}</ActivityProgram>
-                  </ActivityDetails>
-                </ActivityInfo>
-                <ActivityProgress $completed={activity.completed}>
-                  {activity.completed ? 'Concluído' : `${activity.progress}%`}
-                </ActivityProgress>
-              </ActivityItem>
-            ))}
-          </ActivitiesList>
-
-          <QuickActions>
-            <ActionButton href="/student/programs">
-              <FaBook size={16} />
-              Ver Todos os Programas
-            </ActionButton>
-            <ActionButton href="/student/habits">
-              <FaRocket size={16} />
-              Hábitos Diários
-            </ActionButton>
-          </QuickActions>
-        </TodayProgress>
-
-        {/* Seção de Programas Ativos */}
-        <ActivePrograms>
-          <SectionHeader>
-            <SectionTitle>Meus Programas</SectionTitle>
-            <ViewAllLink href="/student/programs">Ver todos</ViewAllLink>
-          </SectionHeader>
-
-          {programs.length === 0 ? (
-            <EmptyPrograms>
-              <EmptyIcon>📚</EmptyIcon>
-              <EmptyTitle>Nenhum programa atribuído</EmptyTitle>
+          {todaysActivities.length === 0 ? (
+            <EmptyStateCard>
+              <EmptyIcon>
+                <FaLightbulb size={48} />
+              </EmptyIcon>
+              <EmptyTitle>Dia de descanso! 🎉</EmptyTitle>
               <EmptyDescription>
-                Aguarde seu profissional atribuir um programa para você começar.
+                Você não tem atividades programadas para hoje. Aproveite para revisar conteúdos ou explorar novos aprendizados!
               </EmptyDescription>
-            </EmptyPrograms>
+              <QuickActions>
+                <ActionButton href="/student/programs">
+                  <FaBook size={16} />
+                  Explorar Programas
+                </ActionButton>
+                <ActionButton href="/student/schedules">
+                  <FaCalendar size={16} />
+                  Ver Cronogramas
+                </ActionButton>
+              </QuickActions>
+            </EmptyStateCard>
           ) : (
-            <ProgramsList>
-              {programs.slice(0, 3).map(({ program, assignment, progress, completedActivities, totalActivities }) => (
-                <ProgramCard key={program.id} href={`/student/programs/${program.id}`}>
-                  <ProgramHeader $color={program.color || '#6366f1'}>
-                    <ProgramIcon>{program.icon || '📚'}</ProgramIcon>
-                    <ProgramInfo>
-                      <ProgramTitle>{program.title}</ProgramTitle>
-                      <ProgramDescription>
-                        {program.description}
-                      </ProgramDescription>
-                    </ProgramInfo>
-                  </ProgramHeader>
+            <>
+              <TodayProgressCard>
+                <ProgressHeader>
+                  <ProgressInfo>
+                    <ProgressLabel>Progresso do Dia</ProgressLabel>
+                    <ProgressValue>{dashboardStats.todayCompletion}%</ProgressValue>
+                  </ProgressInfo>
+                  <ProgressTime>
+                    <FaClock size={14} />
+                    {todaysActivities.reduce((total, a) => total + a.estimatedTime, 0)} min total
+                  </ProgressTime>
+                </ProgressHeader>
+                <ProgressBar>
+                  <ProgressFill $progress={dashboardStats.todayCompletion} />
+                </ProgressBar>
+              </TodayProgressCard>
 
-                  <ProgressSection>
-                    <ProgressInfo>
-                      <ProgressLabel>Progresso</ProgressLabel>
-                      <ProgressValue>{progress}%</ProgressValue>
-                    </ProgressInfo>
-                    <ProgressBar>
-                      <ProgressFill $progress={progress} $color={program.color} />
-                    </ProgressBar>
-                    <ActivitiesCount>
-                      {completedActivities} de {totalActivities} atividades
-                    </ActivitiesCount>
-                  </ProgressSection>
+              <ActivitiesGrid>
+                {todaysActivities.map((activity) => (
+                  <ActivityCard
+                    key={`${activity.scheduleId}-${activity.id}`}
+                    href={`/student/schedules/${activity.scheduleId}/activities/${activity.id}`}
+                    $color={activity.scheduleColor}
+                    $completed={activity.completed}
+                  >
+                    <ActivityHeader>
+                      <ActivityIcon $completed={activity.completed}>
+                        {getActivityIcon(activity.type)}
+                      </ActivityIcon>
+                      <ActivityBadge $type={activity.type}>
+                        {activity.type === 'text' ? 'Texto' :
+                          activity.type === 'quiz' ? 'Quiz' :
+                            activity.type === 'video' ? 'Vídeo' :
+                              activity.type === 'checklist' ? 'Checklist' :
+                                activity.type === 'habit' ? 'Hábito' : 'Arquivo'}
+                      </ActivityBadge>
+                    </ActivityHeader>
 
-                  <ActionButtonNoLink $color={program.color} $small>
-                    <FaPlay size={12} />
-                    {progress === 0 ? 'Começar' : progress === 100 ? 'Revisar' : 'Continuar'}
-                  </ActionButtonNoLink>
-                </ProgramCard>
-              ))}
-            </ProgramsList>
+                    <ActivityContent>
+                      <ActivityTitle>{activity.activity.title}</ActivityTitle>
+                      <ActivityDescription>
+                        {activity.activity.description || 'Complete esta atividade para ganhar pontos.'}
+                      </ActivityDescription>
+
+                      <ActivityMeta>
+                        <ScheduleBadge $color={activity.scheduleColor}>
+                          {activity.scheduleTitle}
+                        </ScheduleBadge>
+                        <ActivityDetails>
+                          <Detail>
+                            <FaClock size={10} />
+                            {activity.estimatedTime}min
+                          </Detail>
+                          <Detail>
+                            <FaStar size={10} />
+                            {activity.points}pts
+                          </Detail>
+                        </ActivityDetails>
+                      </ActivityMeta>
+                    </ActivityContent>
+
+                    <ActivityStatus $completed={activity.completed}>
+                      {activity.completed ? (
+                        <>
+                          <FaCheckCircle size={12} />
+                          Concluída
+                        </>
+                      ) : (
+                        <>
+                          <FaPlay size={12} />
+                          Iniciar
+                        </>
+                      )}
+                    </ActivityStatus>
+                  </ActivityCard>
+                ))}
+              </ActivitiesGrid>
+
+              <QuickActions>
+                <ActionButton href="/student/schedules" $primary>
+                  <FaCalendarDay size={16} />
+                  Ver Cronograma Completo
+                </ActionButton>
+                <ActionButton href="/student/programs">
+                  <FaBook size={16} />
+                  Meus Programas
+                </ActionButton>
+              </QuickActions>
+            </>
           )}
-        </ActivePrograms>
+        </MainSection>
 
-        {/* Seção de Conquistas Recentes */}
-        <RecentAchievementsSection>
-          <SectionHeader>
-            <SectionTitle>Conquistas Recentes</SectionTitle>
-            <ViewAllLink href="/student/achievements">Ver todas</ViewAllLink>
-          </SectionHeader>
+        {/* COLUNA LATERAL: RESUMO E RECURSOS */}
+        <Sidebar>
+          {/* RESUMO DE CRONOGRAMAS */}
+          <SidebarSection>
+            <SectionHeader>
+              <SectionTitle>
+                <FaCalendar size={16} />
+                Meus Cronogramas
+              </SectionTitle>
+              <ViewAllLink href="/student/schedules">
+                <FaArrowRight size={12} />
+              </ViewAllLink>
+            </SectionHeader>
 
-          <AchievementsList>
-            {recentAchievements.map((achievement) => (
-              <AchievementItem key={achievement.id}>
-                <AchievementIcon>
-                  <achievement.icon size={20} />
-                </AchievementIcon>
-                <AchievementInfo>
-                  <AchievementName>{achievement.name}</AchievementName>
-                  <AchievementPoints>+{achievement.points} pontos</AchievementPoints>
-                  <AchievementDate>
-                    Conquistado em {achievement.unlockedAt.toLocaleDateString('pt-BR')}
-                  </AchievementDate>
-                </AchievementInfo>
-              </AchievementItem>
-            ))}
-          </AchievementsList>
+            {schedules.length === 0 ? (
+              <EmptySidebarState>
+                <FaCalendar size={20} />
+                <span>Nenhum cronograma</span>
+              </EmptySidebarState>
+            ) : (
+              <ScheduleList>
+                {schedules.slice(0, 3).map(schedule => (
+                  <ScheduleItem
+                    key={schedule.id}
+                    href={`/student/schedules/${schedule.id}`}
+                  >
+                    <ScheduleColor $color={schedule.color} />
+                    <ScheduleInfo>
+                      <ScheduleName>{schedule.title}</ScheduleName>
+                      <ScheduleProgress>
+                        <ProgressBar $small>
+                          <ProgressFill
+                            $progress={dashboardStats.scheduleCompletion[schedule.id] || 0}
+                            $color={schedule.color}
+                          />
+                        </ProgressBar>
+                        <ProgressPercentage>
+                          {dashboardStats.scheduleCompletion[schedule.id] || 0}%
+                        </ProgressPercentage>
+                      </ScheduleProgress>
+                    </ScheduleInfo>
+                  </ScheduleItem>
+                ))}
+              </ScheduleList>
+            )}
+          </SidebarSection>
 
-          {recentAchievements.length === 0 && (
-            <EmptyAchievements>
-              <FaAward size={32} />
-              <EmptyTitle>Nenhuma conquista ainda</EmptyTitle>
-              <EmptyDescription>
-                Complete atividades para desbloquear conquistas!
-              </EmptyDescription>
-            </EmptyAchievements>
-          )}
-        </RecentAchievementsSection>
+          {/* CONQUISTAS RECENTES */}
+          <SidebarSection>
+            <SectionHeader>
+              <SectionTitle>
+                <FaAward size={16} />
+                Conquistas Recentes
+              </SectionTitle>
+              <ViewAllLink href="/student/achievements">
+                <FaArrowRight size={12} />
+              </ViewAllLink>
+            </SectionHeader>
 
-        {/* Seção de Streak e Motivação */}
-        <StreakSection>
-          <SectionHeader>
-            <SectionTitle>Sequência de Atividades</SectionTitle>
-          </SectionHeader>
+            {recentAchievements.length === 0 ? (
+              <EmptySidebarState>
+                <FaAward size={20} />
+                <span>Sem conquistas</span>
+              </EmptySidebarState>
+            ) : (
+              <AchievementsList>
+                {recentAchievements.slice(0, 2).map(achievement => (
+                  <AchievementItem key={achievement.id}>
+                    <AchievementIcon>
+                      <achievement.icon size={16} />
+                    </AchievementIcon>
+                    <AchievementInfo>
+                      <AchievementName>{achievement.name}</AchievementName>
+                      <AchievementPoints>+{achievement.points} pontos</AchievementPoints>
+                    </AchievementInfo>
+                  </AchievementItem>
+                ))}
+              </AchievementsList>
+            )}
+          </SidebarSection>
 
-          <StreakCard>
-            <StreakIcon>
-              <FaFire size={24} />
-            </StreakIcon>
-            <StreakInfo>
-              <StreakNumber>{studentStats.currentStreak}</StreakNumber>
-              <StreakLabel>dias consecutivos</StreakLabel>
-              <StreakMessage>
-                {studentStats.currentStreak === 0
-                  ? 'Comece hoje sua sequência!'
-                  : studentStats.currentStreak < 3
-                    ? 'Continue assim!'
-                    : studentStats.currentStreak < 7
-                      ? 'Ótimo trabalho!'
-                      : 'Você é incrível! 🎉'
-                }
-              </StreakMessage>
-            </StreakInfo>
-          </StreakCard>
+          {/* DICAS DO DIA */}
+          <TipsSection>
+            <TipsHeader>
+              <FaLightbulb size={16} />
+              <span>Dica do Dia</span>
+            </TipsHeader>
+            <TipsContent>
+              "Divida suas atividades em blocos de tempo para manter o foco e a produtividade. O método Pomodoro (25min trabalho / 5min descanso) é uma ótima técnica!"
+            </TipsContent>
+          </TipsSection>
 
-          <NextLevel>
-            <LevelInfo>
-              <LevelLabel>Próximo Nível</LevelLabel>
-              <LevelProgress>Nível {studentStats.currentLevel + 1}</LevelProgress>
-            </LevelInfo>
-            <LevelBar>
-              <LevelFill
-                $progress={((studentStats.totalPoints % 1000) / 1000) * 100}
-              />
-            </LevelBar>
-            <LevelPoints>
-              {studentStats.totalPoints % 1000}/1000 pontos
-            </LevelPoints>
-          </NextLevel>
-        </StreakSection>
+          {/* NOTIFICAÇÕES */}
+          <NotificationsSection>
+            <NotificationsHeader>
+              <FaBell size={16} />
+              <span>Lembretes</span>
+            </NotificationsHeader>
+            <NotificationsList>
+              {todaysActivities.filter(a => !a.completed).length > 0 && (
+                <NotificationItem>
+                  Você tem {todaysActivities.filter(a => !a.completed).length} atividades pendentes para hoje
+                </NotificationItem>
+              )}
+              {dashboardStats.currentStreak > 0 && (
+                <NotificationItem>
+                  Sequência de {dashboardStats.currentStreak} dias! Continue assim! 🔥
+                </NotificationItem>
+              )}
+              {programs.length > 0 && (
+                <NotificationItem>
+                  {programs.filter(p => p.progress > 0 && p.progress < 100).length} programas em andamento
+                </NotificationItem>
+              )}
+            </NotificationsList>
+          </NotificationsSection>
+        </Sidebar>
       </ContentGrid>
     </Container>
   );
 }
 
-// ========== ESTILOS ==========
+// ========== ESTILOS ATUALIZADOS ==========
 const Container = styled.div`
   padding: 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   min-height: 100vh;
 `;
 
-const Header = styled.div`
-  margin-bottom: 32px;
-`;
-
-const WelcomeSection = styled.div`
-  text-align: center;
+const WelcomeBanner = styled.div`
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border-radius: 20px;
+  padding: 32px;
   margin-bottom: 32px;
   color: white;
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+`;
+
+const WelcomeContent = styled.div`
+  margin-bottom: 32px;
+  position: relative;
+  z-index: 1;
+`;
+
+const WelcomeHeader = styled.div`
+  margin-bottom: 16px;
 `;
 
 const WelcomeTitle = styled.h1`
-  font-size: 32px;
-  font-weight: 700;
+  font-size: 36px;
+  font-weight: 800;
   margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+`;
+
+const CrownIcon = styled.span`
+  color: #fbbf24;
+  animation: float 3s ease-in-out infinite;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
 `;
 
 const WelcomeSubtitle = styled.p`
   font-size: 18px;
   margin: 0;
   opacity: 0.9;
+  font-weight: 500;
+`;
+
+const DateDisplay = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  opacity: 0.9;
+  font-weight: 500;
 `;
 
 const StatsOverview = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
-  margin-bottom: 32px;
+  position: relative;
+  z-index: 1;
 `;
 
-const StatCard = styled.div<{ $color: string }>`
-  background: rgba(255, 255, 255, 0.95);
+const StatCard = styled.div<{ $color: string; $gradient?: boolean }>`
+  background: ${props => props.$gradient
+    ? `linear-gradient(135deg, ${props.$color}dd, ${props.$color}aa)`
+    : 'rgba(255, 255, 255, 0.95)'};
   backdrop-filter: blur(10px);
   border-radius: 16px;
   padding: 20px;
   display: flex;
   align-items: center;
   gap: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: transform 0.2s ease;
+  transition: all 0.3s ease;
+  cursor: pointer;
 
   &:hover {
-    transform: translateY(-2px);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
   }
 `;
 
-const StatIcon = styled.div`
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+const StatIcon = styled.div<{ $color: string }>`
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.2);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 24px;
+  backdrop-filter: blur(10px);
 `;
 
 const StatInfo = styled.div`
@@ -435,320 +764,443 @@ const StatInfo = styled.div`
 `;
 
 const StatValue = styled.div`
-  font-size: 24px;
-  font-weight: 700;
-  color: #1e293b;
+  font-size: 28px;
+  font-weight: 800;
+  color: white;
   margin-bottom: 4px;
+  line-height: 1;
 `;
 
 const StatLabel = styled.div`
   font-size: 14px;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.9);
   font-weight: 500;
 `;
 
 const ContentGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto auto;
-  gap: 24px;
-  grid-template-areas: 
-    "today programs"
-    "today achievements"
-    "streak achievements";
+  grid-template-columns: 2fr 1fr;
+  gap: 32px;
 
   @media (max-width: 1200px) {
     grid-template-columns: 1fr;
-    grid-template-areas: 
-      "today"
-      "programs"
-      "achievements"
-      "streak";
   }
 `;
 
-const TodayProgress = styled.div`
-  grid-area: today;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  padding: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+const MainSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 `;
 
-const ActivePrograms = styled.div`
-  grid-area: programs;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  padding: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-`;
-
-const RecentAchievementsSection = styled.div`
-  grid-area: achievements;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  padding: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-`;
-
-const StreakSection = styled.div`
-  grid-area: streak;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 20px;
-  padding: 24px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+const Sidebar = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 `;
 
 const SectionHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 `;
 
 const SectionTitle = styled.h2`
   font-size: 20px;
-  font-weight: 600;
+  font-weight: 700;
   color: #0f172a;
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 `;
 
-const ProgressPercentage = styled.span`
-  font-size: 18px;
-  font-weight: 700;
-  color: #10b981;
-`;
-
-const ViewAllLink = styled(Link)`
+const SectionBadge = styled.span`
+  background: #6366f1;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
   font-size: 14px;
-  color: #6366f1;
-  text-decoration: none;
-  font-weight: 500;
-
-  &:hover {
-    text-decoration: underline;
-  }
+  font-weight: 700;
 `;
 
-const ProgressBar = styled.div`
+const EmptyStateCard = styled.div`
+  background: white;
+  border-radius: 20px;
+  padding: 48px 32px;
+  text-align: center;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  border: 2px dashed #e2e8f0;
+`;
+
+const EmptyIcon = styled.div`
+  color: #94a3b8;
+  margin-bottom: 20px;
+`;
+
+const EmptyTitle = styled.h3`
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 12px 0;
+`;
+
+const EmptyDescription = styled.p`
+  color: #64748b;
+  font-size: 16px;
+  margin: 0 0 32px 0;
+  line-height: 1.6;
+`;
+
+const TodayProgressCard = styled.div`
+  background: white;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+`;
+
+const ProgressHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+`;
+
+const ProgressInfo = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+`;
+
+const ProgressLabel = styled.span`
+  font-size: 16px;
+  font-weight: 600;
+  color: #64748b;
+`;
+
+const ProgressValue = styled.span`
+  font-size: 32px;
+  font-weight: 800;
+  color: #0f172a;
+`;
+
+const ProgressTime = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #64748b;
+  font-weight: 500;
+`;
+
+const ProgressBar = styled.div<{ $small?: boolean }>`
   width: 100%;
-  height: 8px;
-  background: #e2e8f0;
-  border-radius: 4px;
+  height: ${props => props.$small ? '6px' : '12px'};
+  background: #f1f5f9;
+  border-radius: ${props => props.$small ? '3px' : '6px'};
   overflow: hidden;
-  margin-bottom: 24px;
 `;
 
 const ProgressFill = styled.div<{ $progress: number; $color?: string }>`
   width: ${props => props.$progress}%;
   height: 100%;
-  background: ${props => props.$color ? props.$color : 'linear-gradient(90deg, #8b5cf6, #7c3aed)'};
-  border-radius: 4px;
-  transition: width 0.3s ease;
+  background: ${props => props.$color
+    ? props.$color
+    : 'linear-gradient(90deg, #8b5cf6, #6366f1)'};
+  border-radius: inherit;
+  transition: width 0.5s ease;
 `;
 
-const ActivitiesList = styled.div`
+const ActivitiesGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+`;
+
+const ActivityCard = styled(Link) <{ $color: string; $completed: boolean }>`
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 2px solid ${props => props.$completed ? '#10b981' : props.$color}20;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  color: inherit;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 20px;
-`;
+  gap: 16px;
+  position: relative;
+  overflow: hidden;
 
-const ActivityItem = styled.div<{ $completed: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 12px;
-  background: ${props => props.$completed ? '#f0fdf4' : '#f8fafc'};
-  border: 1px solid ${props => props.$completed ? '#dcfce7' : '#e2e8f0'};
-  transition: all 0.2s ease;
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: ${props => props.$completed ? '#10b981' : props.$color};
+  }
 
   &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    border-color: ${props => props.$completed ? '#10b981' : props.$color}40;
   }
 `;
 
+const ActivityHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
 const ActivityIcon = styled.div<{ $completed: boolean }>`
-  color: ${props => props.$completed ? '#10b981' : '#64748b'};
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: ${props => props.$completed ? '#10b98115' : '#f1f5f9'};
+  color: ${props => props.$completed ? '#10b981' : '#6366f1'};
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
 `;
 
-const ActivityInfo = styled.div`
+const ActivityBadge = styled.span<{ $type: string }>`
+  font-size: 11px;
+  font-weight: 700;
+  color: ${props => {
+    switch (props.$type) {
+      case 'text': return '#6366f1';
+      case 'quiz': return '#f59e0b';
+      case 'video': return '#ef4444';
+      case 'checklist': return '#10b981';
+      case 'file': return '#8b5cf6';
+      case 'habit': return '#06b6d4';
+      default: return '#64748b';
+    }
+  }};
+  background: ${props => {
+    switch (props.$type) {
+      case 'text': return '#6366f115';
+      case 'quiz': return '#f59e0b15';
+      case 'video': return '#ef444415';
+      case 'checklist': return '#10b98115';
+      case 'file': return '#8b5cf615';
+      case 'habit': return '#06b6d415';
+      default: return '#f1f5f9';
+    }
+  }};
+  padding: 4px 10px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const ActivityContent = styled.div`
   flex: 1;
 `;
 
-const ActivityTitle = styled.div`
-  font-weight: 600;
+const ActivityTitle = styled.h3`
+  font-size: 16px;
+  font-weight: 700;
   color: #0f172a;
-  margin-bottom: 4px;
+  margin: 0 0 8px 0;
+  line-height: 1.3;
+`;
+
+const ActivityDescription = styled.p`
+  color: #64748b;
+  font-size: 14px;
+  margin: 0 0 16px 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+`;
+
+const ActivityMeta = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+`;
+
+const ScheduleBadge = styled.span<{ $color: string }>`
+  font-size: 12px;
+  font-weight: 600;
+  color: ${props => props.$color};
+  background: ${props => props.$color}15;
+  padding: 4px 10px;
+  border-radius: 12px;
 `;
 
 const ActivityDetails = styled.div`
   display: flex;
   gap: 12px;
+`;
+
+const Detail = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 12px;
   color: #64748b;
-`;
-
-const ActivityType = styled.span`
-  text-transform: capitalize;
-  background: #f1f5f9;
-  padding: 2px 8px;
-  border-radius: 12px;
-`;
-
-const ActivityProgram = styled.span`
   font-weight: 500;
 `;
 
-const ActivityProgress = styled.div<{ $completed: boolean }>`
+const ActivityStatus = styled.div<{ $completed: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 14px;
   font-weight: 600;
   color: ${props => props.$completed ? '#10b981' : '#6366f1'};
-  flex-shrink: 0;
+  padding: 10px;
+  border-radius: 10px;
+  background: ${props => props.$completed ? '#10b98110' : '#6366f110'};
+  justify-content: center;
+  transition: all 0.2s ease;
 `;
 
 const QuickActions = styled.div`
   display: flex;
-  gap: 12px;
+  gap: 16px;
+  margin-top: 16px;
 
   @media (max-width: 768px) {
     flex-direction: column;
   }
 `;
 
-const ActionButton = styled(Link) <{ $color?: string; $small?: boolean }>`
+const ActionButton = styled(Link) <{ $primary?: boolean }>`
+  flex: ${props => props.$primary ? 2 : 1};
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: ${props => props.$color || 'linear-gradient(135deg, #6366f1, #4f46e5)'};
-  color: white;
+  gap: 10px;
+  background: ${props => props.$primary
+    ? 'linear-gradient(135deg, #6366f1, #4f46e5)'
+    : 'white'};
+  color: ${props => props.$primary ? 'white' : '#6366f1'};
   text-decoration: none;
-  padding: ${props => props.$small ? '8px 16px' : '12px 20px'};
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: ${props => props.$small ? '12px' : '14px'};
-  transition: all 0.2s ease;
+  padding: 16px 24px;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 15px;
+  transition: all 0.3s ease;
   justify-content: center;
+  border: ${props => props.$primary ? 'none' : '2px solid #e2e8f0'};
+  box-shadow: ${props => props.$primary
+    ? '0 4px 20px rgba(99, 102, 241, 0.3)'
+    : '0 4px 16px rgba(0, 0, 0, 0.05)'};
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px ${props => props.$color ? `${props.$color}40` : 'rgba(99, 102, 241, 0.3)'};
+    box-shadow: ${props => props.$primary
+    ? '0 8px 32px rgba(99, 102, 241, 0.4)'
+    : '0 8px 24px rgba(0, 0, 0, 0.1)'};
   }
 `;
 
-const ActionButtonNoLink = styled.button <{ $color?: string; $small?: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: ${props => props.$color || 'linear-gradient(135deg, #6366f1, #4f46e5)'};
-  color: white;
+const SidebarSection = styled.div`
+  background: white;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+`;
+
+const ViewAllLink = styled(Link)`
+  color: #6366f1;
   text-decoration: none;
-  padding: ${props => props.$small ? '8px 16px' : '12px 20px'};
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: ${props => props.$small ? '12px' : '14px'};
+  padding: 6px;
+  border-radius: 8px;
   transition: all 0.2s ease;
-  justify-content: center;
-  border: none;
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px ${props => props.$color ? `${props.$color}40` : 'rgba(99, 102, 241, 0.3)'};
+    background: #f1f5f9;
   }
 `;
 
-const ProgramsList = styled.div`
+const EmptySidebarState = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  align-items: center;
+  gap: 12px;
+  padding: 32px 20px;
+  color: #94a3b8;
+  text-align: center;
+
+  svg {
+    opacity: 0.5;
+  }
+
+  span {
+    font-size: 14px;
+    font-weight: 500;
+  }
 `;
 
-const ProgramCard = styled(Link)`
-  background: white;
-  border-radius: 16px;
-  padding: 0;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-  border: 1px solid #f1f5f9;
-  overflow: hidden;
-  transition: all 0.3s ease;
+const ScheduleList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const ScheduleItem = styled(Link)`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
   text-decoration: none;
   color: inherit;
 
   &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    transform: translateX(4px);
+    border-color: #6366f1;
+    background: #eef2ff;
   }
 `;
 
-const ProgramHeader = styled.div<{ $color: string }>`
-  background: ${props => props.$color}15;
-  padding: 20px;
-  border-bottom: 1px solid #f1f5f9;
+const ScheduleColor = styled.div<{ $color: string }>`
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: ${props => props.$color};
+  flex-shrink: 0;
 `;
 
-const ProgramIcon = styled.div`
-  font-size: 32px;
-  margin-bottom: 12px;
+const ScheduleInfo = styled.div`
+  flex: 1;
+  min-width: 0;
 `;
 
-const ProgramInfo = styled.div``;
-
-const ProgramTitle = styled.h3`
-  font-size: 18px;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0 0 8px 0;
-`;
-
-const ProgramDescription = styled.p`
-  color: #64748b;
-  font-size: 14px;
-  margin: 0;
-  line-height: 1.4;
-`;
-
-const ProgressSection = styled.div`
-  padding: 20px;
-`;
-
-const ProgressInfo = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-`;
-
-const ProgressLabel = styled.span`
-  font-size: 14px;
-  color: #64748b;
-  font-weight: 500;
-`;
-
-const ProgressValue = styled.span`
+const ScheduleName = styled.div`
   font-size: 14px;
   font-weight: 600;
   color: #0f172a;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
-const ActivitiesCount = styled.div`
+const ScheduleProgress = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const ProgressPercentage = styled.span`
   font-size: 12px;
+  font-weight: 600;
   color: #64748b;
-  margin-top: 8px;
-  text-align: center;
+  min-width: 32px;
 `;
 
 const AchievementsList = styled.div`
@@ -763,20 +1215,14 @@ const AchievementItem = styled.div`
   gap: 12px;
   padding: 16px;
   border-radius: 12px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  transition: all 0.2s ease;
-
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
+  background: #fefce8;
+  border: 1px solid #fde047;
 `;
 
 const AchievementIcon = styled.div`
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   background: linear-gradient(135deg, #f59e0b, #fbbf24);
   color: white;
   display: flex;
@@ -792,149 +1238,71 @@ const AchievementInfo = styled.div`
 const AchievementName = styled.div`
   font-weight: 600;
   color: #0f172a;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+  font-size: 14px;
 `;
 
 const AchievementPoints = styled.div`
-  font-size: 14px;
-  color: #10b981;
-  font-weight: 600;
-  margin-bottom: 2px;
-`;
-
-const AchievementDate = styled.div`
   font-size: 12px;
-  color: #64748b;
+  color: #10b981;
+  font-weight: 700;
 `;
 
-const StreakCard = styled.div`
+const TipsSection = styled.div`
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border-radius: 20px;
+  padding: 24px;
+  border: 1px solid #a7f3d0;
+`;
+
+const TipsHeader = styled.div`
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 20px;
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
-  border-radius: 16px;
-  margin-bottom: 20px;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 700;
+  color: #065f46;
+  font-size: 16px;
 `;
 
-const StreakIcon = styled.div`
-  width: 60px;
-  height: 60px;
-  border-radius: 16px;
-  background: #f59e0b;
-  color: white;
+const TipsContent = styled.p`
+  color: #047857;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+  font-style: italic;
+`;
+
+const NotificationsSection = styled.div`
+  background: #fef3c7;
+  border-radius: 20px;
+  padding: 24px;
+  border: 1px solid #fcd34d;
+`;
+
+const NotificationsHeader = styled.div`
   display: flex;
   align-items: center;
-  justify-content: center;
-`;
-
-const StreakInfo = styled.div`
-  flex: 1;
-`;
-
-const StreakNumber = styled.div`
-  font-size: 32px;
+  gap: 8px;
+  margin-bottom: 12px;
   font-weight: 700;
   color: #92400e;
-  line-height: 1;
-  margin-bottom: 4px;
+  font-size: 16px;
 `;
 
-const StreakLabel = styled.div`
+const NotificationsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const NotificationItem = styled.div`
   font-size: 14px;
   color: #92400e;
-  font-weight: 500;
-  margin-bottom: 4px;
-`;
-
-const StreakMessage = styled.div`
-  font-size: 12px;
-  color: #b45309;
-  font-weight: 500;
-`;
-
-const NextLevel = styled.div`
-  background: #f8fafc;
-  border-radius: 12px;
-  padding: 16px;
-`;
-
-const LevelInfo = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-`;
-
-const LevelLabel = styled.span`
-  font-size: 14px;
-  color: #64748b;
-  font-weight: 500;
-`;
-
-const LevelProgress = styled.span`
-  font-size: 14px;
-  font-weight: 600;
-  color: #0f172a;
-`;
-
-const LevelBar = styled.div`
-  width: 100%;
-  height: 6px;
-  background: #e2e8f0;
-  border-radius: 3px;
-  overflow: hidden;
-  margin-bottom: 8px;
-`;
-
-const LevelFill = styled.div<{ $progress: number }>`
-  width: ${props => props.$progress}%;
-  height: 100%;
-  background: linear-gradient(90deg, #8b5cf6, #7c3aed);
-  border-radius: 3px;
-  transition: width 0.3s ease;
-`;
-
-const LevelPoints = styled.div`
-  font-size: 12px;
-  color: #64748b;
-  text-align: center;
-`;
-
-// Estados vazios
-const EmptyState = styled.div`
-  text-align: center;
-  padding: 40px 20px;
-`;
-
-const EmptyIcon = styled.div`
-  font-size: 48px;
-  margin-bottom: 16px;
-`;
-
-const EmptyTitle = styled.h3`
-  font-size: 18px;
-  font-weight: 600;
-  color: #0f172a;
-  margin: 0 0 8px 0;
-`;
-
-const EmptyDescription = styled.p`
-  color: #64748b;
-  font-size: 14px;
-  margin: 0 0 20px 0;
-`;
-
-const EmptyPrograms = styled(EmptyState)`
-  border: 2px dashed #e2e8f0;
-  border-radius: 12px;
-  background: #f8fafc;
-`;
-
-const EmptyAchievements = styled(EmptyState)`
-  border: 2px dashed #e2e8f0;
-  border-radius: 12px;
-  background: #f8fafc;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  line-height: 1.4;
 `;
 
 // Loading
@@ -943,13 +1311,14 @@ const LoadingContainer = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 120px 20px;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   min-height: 100vh;
 `;
 
 const LoadingText = styled.p`
   margin-top: 16px;
-  color: white;
+  color: #64748b;
   font-size: 16px;
+  font-weight: 500;
 `;
