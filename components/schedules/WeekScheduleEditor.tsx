@@ -230,8 +230,8 @@ export default function WeekScheduleEditor({ weekDays, onChange }: WeekScheduleE
           onSave={handleSaveActivity}
           moduleId={selectedDay} // Reutilizando a prop moduleId como day
           existingActivities={[]}
-          initialData={editingActivity?.activity}
-          isEditing={!!editingActivity}
+          // initialData={editingActivity?.activity}
+          // isEditing={!!editingActivity}
         />
       )}
     </Container>
