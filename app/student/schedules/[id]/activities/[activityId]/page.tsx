@@ -47,27 +47,25 @@ export default function ScheduleActivityPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
-  
+
   const scheduleId = params.id as string;
   const activityId = params.activityId as string;
-  
+
   const [schedule, setSchedule] = useState<WeeklySchedule | null>(null);
   const [activity, setActivity] = useState<ScheduleActivity | null>(null);
   const [activityDay, setActivityDay] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Estados para interação
   const [timeSpent, setTimeSpent] = useState(0);
-  const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Hook de progresso
-  const { 
-    progress, 
-    loading: progressLoading, 
+  const {
+    progress,
+    loading: progressLoading,
     toggleActivityCompletion,
-    addActivityNotes,
     updateActivityTime,
     isActivityCompleted
   } = useScheduleProgress({ scheduleId });
@@ -95,14 +93,14 @@ export default function ScheduleActivityPage() {
   useEffect(() => {
     const loadActivity = async () => {
       if (!user?.id || !scheduleId || !activityId) return;
-      
+
       try {
         setLoading(true);
         setError(null);
-        
+
         // Carregar cronograma
         const scheduleData = await schedulesService.getScheduleById(scheduleId);
-        
+
         if (!scheduleData) {
           throw new Error('Cronograma não encontrado');
         }
@@ -134,12 +132,6 @@ export default function ScheduleActivityPage() {
         setActivity(foundActivity);
         setActivityDay(foundDay);
 
-        // Carregar notas existentes
-        const activityProgress = progress[activityId];
-        if (activityProgress?.notes) {
-          setNotes(activityProgress.notes);
-        }
-
       } catch (err: any) {
         console.error('Erro ao carregar atividade:', err);
         setError(err.message || 'Erro ao carregar atividade');
@@ -152,38 +144,63 @@ export default function ScheduleActivityPage() {
   }, [user?.id, scheduleId, activityId, progress]);
 
   const handleCompleteActivity = async () => {
-    if (!activity || !user) return;
+    // 1. Verificação inicial
+    if (!activity || !user) {
+      setError('Detalhes da atividade ou informações do usuário ausentes.');
+      return;
+    }
 
     setIsSubmitting(true);
+
     try {
       const isCurrentlyCompleted = isActivityCompleted(activityId);
-      
+
+      console.log(`Tentando alternar atividade ID: ${activityId}, Conclusão atual: ${isCurrentlyCompleted}`);
+
+      // 2. Ação Crítica no Firebase - PASSAR DADOS EXPLÍCITOS
       await toggleActivityCompletion(activityId, activityDay, !isCurrentlyCompleted, {
         timeSpent,
-        notes: notes.trim() || undefined
+        // CORREÇÃO: Passar valores explícitos, não undefined
+        answers: null,  // ou omitir se não usado
       });
 
-      // Redirecionar de volta para o cronograma
+      console.log('SUCESSO: Atividade marcada como concluída/incompleta no banco de dados.');
+
+      // 3. Redirecionar
       router.push(`/student/schedules/${scheduleId}?day=${activityDay}`);
 
     } catch (err: any) {
-      console.error('Erro ao atualizar atividade:', err);
-      setError(err.message || 'Erro ao atualizar atividade');
+
+      // 4. Tratamento Detalhado do Erro
+      let errorMessage = 'Ocorreu um erro desconhecido ao atualizar a atividade.';
+
+      if (err.code) {
+        console.error('ERRO DETALHADO (Firebase/Auth):', err.code, err.message);
+
+        switch (err.code) {
+          case 'permission-denied':
+          case 'resource-exhausted':
+            errorMessage = 'Falha de permissão! Verifique as regras de segurança do Firebase ou se você está logado.';
+            break;
+          case 'unavailable':
+            errorMessage = 'Serviço de banco de dados indisponível. Tente novamente mais tarde.';
+            break;
+          case 'invalid-argument':
+            errorMessage = 'Dados inválidos enviados para o banco de dados. Contate o suporte.';
+            break;
+          default:
+            errorMessage = `Erro de Firebase (${err.code}): ${err.message}`;
+        }
+      } else {
+        // Outros erros
+        console.error('ERRO GERAL:', err);
+        errorMessage = err.message || 'Erro ao comunicar com o servidor. Verifique sua conexão.';
+      }
+
+      setError(errorMessage);
+
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const handleSaveNotes = async () => {
-    if (!activity || !user || !notes.trim()) return;
-
-    try {
-      await addActivityNotes(activityId, notes);
-      // Feedback visual (poderia ser um toast)
-      alert('Notas salvas com sucesso!');
-    } catch (err: any) {
-      console.error('Erro ao salvar notas:', err);
-      setError(err.message || 'Erro ao salvar notas');
     }
   };
 
@@ -290,8 +307,8 @@ export default function ScheduleActivityPage() {
             <ContentHeader>Hábito</ContentHeader>
             <HabitInfo>
               <InfoItem>
-                <strong>Frequência:</strong> {activity.frequency === 'daily' ? 'Diário' : 
-                                              activity.frequency === 'weekly' ? 'Semanal' : 'Mensal'}
+                <strong>Frequência:</strong> {activity.frequency === 'daily' ? 'Diário' :
+                  activity.frequency === 'weekly' ? 'Semanal' : 'Mensal'}
               </InfoItem>
               {activity.schedule?.specificTimes && (
                 <InfoItem>
@@ -453,23 +470,6 @@ export default function ScheduleActivityPage() {
         <ActivityContentSection>
           {renderActivityContent()}
         </ActivityContentSection>
-
-        {/* Notas do Aluno */}
-        <NotesSection>
-          <SectionTitle>Suas Notas</SectionTitle>
-          <NotesTextarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Adicione suas observações, dúvidas ou reflexões sobre esta atividade..."
-            rows={4}
-          />
-          <NotesActions>
-            <SaveNotesButton onClick={handleSaveNotes} disabled={!notes.trim()}>
-              <FaSave size={14} />
-              Salvar Notas
-            </SaveNotesButton>
-          </NotesActions>
-        </NotesSection>
 
         {/* Ações */}
         <ActionsSection>
@@ -892,56 +892,6 @@ const DefaultText = styled.p`
   font-size: 14px;
   text-align: center;
   padding: 20px;
-`;
-
-const NotesSection = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-`;
-
-const NotesTextarea = styled.textarea`
-  width: 100%;
-  padding: 16px;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 14px;
-  resize: vertical;
-  font-family: inherit;
-  margin-bottom: 16px;
-  transition: all 0.2s ease;
-
-  &:focus {
-    outline: none;
-    border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-  }
-`;
-
-const NotesActions = styled.div`
-  display: flex;
-  justify-content: flex-end;
-`;
-
-const SaveNotesButton = styled.button<{ disabled: boolean }>`
-  background: ${props => props.disabled ? '#cbd5e1' : '#10b981'};
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.2s ease;
-
-  &:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-  }
 `;
 
 const ActionsSection = styled.div`

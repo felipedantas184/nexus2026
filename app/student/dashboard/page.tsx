@@ -36,6 +36,8 @@ import { Assignment } from '@/types/assignments.types';
 import { WeeklySchedule, ScheduleActivity } from '@/types/schedule.types';
 import { assignmentService } from '@/lib/firebase/services/assignmentsService';
 import { useAuth } from '@/context/AuthContext';
+import { FaCheck } from 'react-icons/fa6';
+import { useScheduleProgress } from '@/hooks/useScheduleProgress';
 
 interface ProgramWithProgress {
   program: Program;
@@ -316,6 +318,91 @@ export default function StudentDashboard() {
     return messages[Math.floor(Math.random() * messages.length)];
   };
 
+  const handleActivityToggleInDashboard = async (activity: TodayActivity) => {
+    try {
+      // Atualizar estado local IMEDIATAMENTE para feedback visual
+      setTodaysActivities(prevActivities =>
+        prevActivities.map(a =>
+          a.id === activity.id
+            ? { ...a, completed: !a.completed }
+            : a
+        )
+      );
+
+      // Atualizar estatísticas do dashboard
+      setDashboardStats(prevStats => {
+        const newCompletedToday = !activity.completed
+          ? prevStats.completedActivities + 1
+          : prevStats.completedActivities - 1;
+
+        const newTodayCompletion = Math.round(
+          (newCompletedToday / todaysActivities.length) * 100
+        );
+
+        return {
+          ...prevStats,
+          completedActivities: newCompletedToday,
+          todayCompletion: newTodayCompletion
+        };
+      });
+
+    } catch (error) {
+      console.error('Erro ao atualizar estado local:', error);
+
+      // Reverter em caso de erro
+      setTodaysActivities(prevActivities =>
+        prevActivities.map(a =>
+          a.id === activity.id
+            ? { ...a, completed: activity.completed } // Voltar ao estado original
+            : a
+        )
+      );
+    }
+  };
+
+  function DashboardActivityToggle({
+    activity,
+    onToggle
+  }: {
+    activity: TodayActivity;
+    onToggle: () => void;
+  }) {
+    const { toggleActivityCompletion, isActivityCompleted } = useScheduleProgress({
+      scheduleId: activity.scheduleId
+    });
+
+    const handleToggle = async () => {
+      try {
+        await toggleActivityCompletion(
+          activity.id,
+          activity.day,
+          !activity.completed,
+          { timeSpent: activity.estimatedTime || 5 }
+        );
+
+        // Chamar callback para atualizar estado no pai
+        onToggle();
+      } catch (error) {
+        console.error('Erro:', error);
+      }
+    };
+
+    // USAR O HOOK PARA VERIFICAR ESTADO REAL, não o activity.completed
+    const isCompleted = isActivityCompleted(activity.id);
+
+    return (
+      <QuickToggle
+        onClick={handleToggle}
+        $completed={isCompleted} // Usar estado do hook
+        title={isCompleted ? "Marcar como não concluída" : "Marcar como concluída"}
+      >
+        <ToggleCircle $completed={isCompleted}>
+          {isCompleted ? <FaCheck size={10} /> : null}
+        </ToggleCircle>
+      </QuickToggle>
+    );
+  }
+
   if (isLoading) {
     return (
       <LoadingContainer>
@@ -447,62 +534,89 @@ export default function StudentDashboard() {
 
               <ActivitiesGrid>
                 {todaysActivities.map((activity) => (
-                  <ActivityCard
+                  <ActivityCardWrapper
                     key={`${activity.scheduleId}-${activity.id}`}
-                    href={`/student/schedules/${activity.scheduleId}/activities/${activity.id}`}
-                    $color={activity.scheduleColor}
+                    $type={activity.type}
                     $completed={activity.completed}
+                    $scheduleColor={activity.scheduleColor}
                   >
-                    <ActivityHeader>
-                      <ActivityIcon $completed={activity.completed}>
+                    <CardHeader>
+                      <ActivityIconWrapper $type={activity.type} $completed={activity.completed}>
                         {getActivityIcon(activity.type)}
-                      </ActivityIcon>
-                      <ActivityBadge $type={activity.type}>
-                        {activity.type === 'text' ? 'Texto' :
-                          activity.type === 'quiz' ? 'Quiz' :
-                            activity.type === 'video' ? 'Vídeo' :
-                              activity.type === 'checklist' ? 'Checklist' :
-                                activity.type === 'habit' ? 'Hábito' : 'Arquivo'}
-                      </ActivityBadge>
-                    </ActivityHeader>
+                      </ActivityIconWrapper>
+
+                      <DashboardActivityToggle
+                        activity={activity}
+                        onToggle={() => handleActivityToggleInDashboard(activity)}
+                      />
+                    </CardHeader>
 
                     <ActivityContent>
-                      <ActivityTitle>{activity.activity.title}</ActivityTitle>
-                      <ActivityDescription>
-                        {activity.activity.description || 'Complete esta atividade para ganhar pontos.'}
-                      </ActivityDescription>
+                      <ActivityTitleRow>
+                        <ActivityTitle>
+                          {activity.activity.title}
+                          {activity.activity.isRequired && <RequiredIndicator title="Atividade obrigatória">•</RequiredIndicator>}
+                        </ActivityTitle>
+                      </ActivityTitleRow>
+
+                      {activity.activity.description && (
+                        <ActivityDescription>
+                          {activity.activity.description}
+                        </ActivityDescription>
+                      )}
 
                       <ActivityMeta>
+                        <MetaItem>
+                          <FaClock size={10} />
+                          <span>{activity.estimatedTime}min</span>
+                        </MetaItem>
+
+                        <MetaItem>
+                          <FaStar size={10} />
+                          <span>{activity.points}pts</span>
+                        </MetaItem>
+
                         <ScheduleBadge $color={activity.scheduleColor}>
                           {activity.scheduleTitle}
                         </ScheduleBadge>
-                        <ActivityDetails>
-                          <Detail>
-                            <FaClock size={10} />
-                            {activity.estimatedTime}min
-                          </Detail>
-                          <Detail>
-                            <FaStar size={10} />
-                            {activity.points}pts
-                          </Detail>
-                        </ActivityDetails>
                       </ActivityMeta>
                     </ActivityContent>
 
-                    <ActivityStatus $completed={activity.completed}>
-                      {activity.completed ? (
-                        <>
-                          <FaCheckCircle size={12} />
-                          Concluída
-                        </>
-                      ) : (
-                        <>
+                    <CardFooter>
+                      <ActionButtons>
+                        <DetailButton
+                          href={`/student/schedules/${activity.scheduleId}/activities/${activity.id}`}
+                          $type={activity.type}
+                        >
                           <FaPlay size={12} />
-                          Iniciar
-                        </>
-                      )}
-                    </ActivityStatus>
-                  </ActivityCard>
+                          Ver Detalhes
+                        </DetailButton>
+
+                        {activity.activity.instructions && (
+                          <InstructionsButton
+                            onClick={() => alert(activity.activity.instructions)}
+                            title="Ver instruções"
+                          >
+                            <FaQuestionCircle size={12} />
+                          </InstructionsButton>
+                        )}
+                      </ActionButtons>
+
+                      <CompletionStatus $completed={activity.completed}>
+                        {activity.completed ? (
+                          <>
+                            <FaCheck size={10} />
+                            <span>Concluída</span>
+                          </>
+                        ) : (
+                          <>
+                            <FaClock size={10} />
+                            <span>Clique no círculo para marcar</span>
+                          </>
+                        )}
+                      </CompletionStatus>
+                    </CardFooter>
+                  </ActivityCardWrapper>
                 ))}
               </ActivitiesGrid>
 
@@ -918,59 +1032,15 @@ const ActivitiesGrid = styled.div`
   gap: 20px;
 `;
 
-const ActivityCard = styled(Link) <{ $color: string; $completed: boolean }>`
-  background: white;
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  border: 2px solid ${props => props.$completed ? '#10b981' : props.$color}20;
-  transition: all 0.3s ease;
-  text-decoration: none;
-  color: inherit;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: ${props => props.$completed ? '#10b981' : props.$color};
-  }
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-    border-color: ${props => props.$completed ? '#10b981' : props.$color}40;
-  }
-`;
-
-const ActivityHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const ActivityIcon = styled.div<{ $completed: boolean }>`
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: ${props => props.$completed ? '#10b98115' : '#f1f5f9'};
-  color: ${props => props.$completed ? '#10b981' : '#6366f1'};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
-
-const ActivityBadge = styled.span<{ $type: string }>`
-  font-size: 11px;
-  font-weight: 700;
-  color: ${props => {
+const ActivityCardWrapper = styled.div<{
+  $type: string;
+  $completed: boolean;
+  $scheduleColor: string
+}>`
+  background: ${props => props.$completed ? '#f0fdf4' : 'white'};
+  border: 1px solid ${props => props.$completed ? '#10b98140' : '#e2e8f0'};
+  border-left: 4px solid ${props => {
+    if (props.$completed) return '#10b981';
     switch (props.$type) {
       case 'text': return '#6366f1';
       case 'quiz': return '#f59e0b';
@@ -978,42 +1048,169 @@ const ActivityBadge = styled.span<{ $type: string }>`
       case 'checklist': return '#10b981';
       case 'file': return '#8b5cf6';
       case 'habit': return '#06b6d4';
-      default: return '#64748b';
+      default: return '#6366f1';
     }
   }};
-  background: ${props => {
-    switch (props.$type) {
-      case 'text': return '#6366f115';
-      case 'quiz': return '#f59e0b15';
-      case 'video': return '#ef444415';
-      case 'checklist': return '#10b98115';
-      case 'file': return '#8b5cf615';
-      case 'habit': return '#06b6d415';
-      default: return '#f1f5f9';
-    }
-  }};
-  padding: 4px 10px;
   border-radius: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  padding: 16px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    border-color: ${props => {
+    if (props.$completed) return '#10b98160';
+    switch (props.$type) {
+      case 'text': return '#6366f160';
+      case 'quiz': return '#f59e0b60';
+      case 'video': return '#ef444460';
+      case 'checklist': return '#10b98160';
+      case 'file': return '#8b5cf660';
+      case 'habit': return '#06b6d460';
+      default: return '#6366f160';
+    }
+  }};
+    
+    // Efeito de brilho no hover
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 100%;
+      background: linear-gradient(90deg, 
+        transparent 0%, 
+        ${props => props.$scheduleColor}08 50%, 
+        transparent 100%
+      );
+      pointer-events: none;
+    }
+  }
+`;
+
+const CardHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 4px;
+`;
+
+const ActivityIconWrapper = styled.div<{ $type: string; $completed: boolean }>`
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: ${props => {
+    if (props.$completed) return '#10b98120';
+    switch (props.$type) {
+      case 'text': return '#6366f120';
+      case 'quiz': return '#f59e0b20';
+      case 'video': return '#ef444420';
+      case 'checklist': return '#10b98120';
+      case 'file': return '#8b5cf620';
+      case 'habit': return '#06b6d420';
+      default: return '#6366f120';
+    }
+  }};
+  color: ${props => {
+    if (props.$completed) return '#10b981';
+    switch (props.$type) {
+      case 'text': return '#6366f1';
+      case 'quiz': return '#f59e0b';
+      case 'video': return '#ef4444';
+      case 'checklist': return '#10b981';
+      case 'file': return '#8b5cf6';
+      case 'habit': return '#06b6d4';
+      default: return '#6366f1';
+    }
+  }};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+`;
+
+const QuickToggle = styled.button<{ $completed: boolean }>`
+  width: 26px;
+  height: 26px;
+  border: 2px solid ${props => props.$completed ? '#10b981' : '#d1d5db'};
+  border-radius: 50%;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  padding: 0;
+  margin: 0;
+  
+  &:hover {
+    border-color: ${props => props.$completed ? '#dc2626' : '#10b981'};
+    background: ${props => props.$completed ? '#fef2f210' : '#10b98110'};
+    transform: scale(1.1);
+  }
+`;
+
+const ToggleCircle = styled.div<{ $completed: boolean }>`
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: ${props => props.$completed ? '#10b981' : 'transparent'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 7px;
+  transition: all 0.2s ease;
 `;
 
 const ActivityContent = styled.div`
   flex: 1;
+  min-width: 0;
+`;
+
+const ActivityTitleRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 6px;
 `;
 
 const ActivityTitle = styled.h3`
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
   color: #0f172a;
-  margin: 0 0 8px 0;
+  margin: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   line-height: 1.3;
+`;
+
+const RequiredIndicator = styled.span`
+  color: #dc2626;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
 `;
 
 const ActivityDescription = styled.p`
   color: #64748b;
-  font-size: 14px;
-  margin: 0 0 16px 0;
+  font-size: 12px;
+  margin: 0 0 10px 0;
   line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1023,46 +1220,117 @@ const ActivityDescription = styled.p`
 
 const ActivityMeta = styled.div`
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-top: auto;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
 `;
 
-const ScheduleBadge = styled.span<{ $color: string }>`
-  font-size: 12px;
-  font-weight: 600;
-  color: ${props => props.$color};
-  background: ${props => props.$color}15;
-  padding: 4px 10px;
-  border-radius: 12px;
-`;
-
-const ActivityDetails = styled.div`
-  display: flex;
-  gap: 12px;
-`;
-
-const Detail = styled.span`
+const MetaItem = styled.div`
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: 11px;
   color: #64748b;
   font-weight: 500;
+  
+  svg {
+    color: #94a3b8;
+  }
 `;
 
-const ActivityStatus = styled.div<{ $completed: boolean }>`
+const ScheduleBadge = styled.span<{ $color: string }>`
+  font-size: 11px;
+  font-weight: 600;
+  color: ${props => props.$color};
+  background: ${props => props.$color}15;
+  padding: 3px 8px;
+  border-radius: 12px;
+`;
+
+const CardFooter = styled.div`
+  border-top: 1px solid #f1f5f9;
+  padding-top: 12px;
+  margin-top: 8px;
+`;
+
+const ActionButtons = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+`;
+
+
+const DetailButton = styled(Link) <{ $type: string }>`
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  color: ${props => props.$completed ? '#10b981' : '#6366f1'};
-  padding: 10px;
-  border-radius: 10px;
-  background: ${props => props.$completed ? '#10b98110' : '#6366f110'};
   justify-content: center;
+  background: ${props => {
+    switch (props.$type) {
+      case 'text': return '#6366f1';
+      case 'quiz': return '#f59e0b';
+      case 'video': return '#ef4444';
+      case 'checklist': return '#10b981';
+      case 'file': return '#8b5cf6';
+      case 'habit': return '#06b6d4';
+      default: return '#6366f1';
+    }
+  }};
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
   transition: all 0.2s ease;
+  cursor: pointer;
+  
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    opacity: 0.9;
+  }
+`;
+
+const InstructionsButton = styled.button`
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  
+  &:hover {
+    background: #e2e8f0;
+    color: #374151;
+    transform: translateY(-1px);
+  }
+`;
+
+const CompletionStatus = styled.div<{ $completed: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: ${props => props.$completed ? '#10b981' : '#94a3b8'};
+  font-weight: 500;
+  
+  svg {
+    flex-shrink: 0;
+  }
+  
+  span {
+    flex: 1;
+  }
 `;
 
 const QuickActions = styled.div`

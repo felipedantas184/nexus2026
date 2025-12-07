@@ -60,21 +60,37 @@ export const progressService = {
       const snapshot = await getDocs(progressQuery);
       
       await runTransaction(firestore, async (transaction) => {
+        // Preparar dados para evitar valores undefined
+        const updateData: any = {
+          completed: true,
+          completedAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+
+        // Adicionar apenas valores definidos
+        if (data.timeSpent !== undefined) {
+          updateData.timeSpent = data.timeSpent;
+        }
+
+        // CORREÇÃO CRÍTICA: Verificar se answers existe e não é undefined
+        if (data.answers !== undefined && data.answers !== null) {
+          updateData.answers = data.answers;
+        }
+
+        // CORREÇÃO: Verificar se notes existe e não é undefined
+        if (data.notes !== undefined && data.notes !== null) {
+          updateData.notes = data.notes;
+        }
+
         if (!snapshot.empty) {
           // Atualizar progresso existente
           const progressDoc = snapshot.docs[0];
-          transaction.update(progressDoc.ref, {
-            completed: true,
-            completedAt: serverTimestamp(),
-            timeSpent: data.timeSpent || 0,
-            answers: data.answers,
-            notes: data.notes,
-            updatedAt: serverTimestamp()
-          });
+          transaction.update(progressDoc.ref, updateData);
         } else {
           // Criar novo registro de progresso
           const progressRef = collection(firestore, PROGRESS_COLLECTION);
-          transaction.set(doc(progressRef), {
+          
+          const newData = {
             studentId,
             scheduleId,
             activityId,
@@ -82,15 +98,25 @@ export const progressService = {
             completed: true,
             completedAt: serverTimestamp(),
             timeSpent: data.timeSpent || 0,
-            answers: data.answers,
-            notes: data.notes,
+            // Garantir que answers e notes sejam definidos corretamente
+            answers: data.answers !== undefined ? data.answers : null,
+            notes: data.notes !== undefined ? data.notes : null,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
-          });
+          };
+
+          transaction.set(doc(progressRef), newData);
         }
       });
     } catch (error) {
       console.error('Erro ao registrar conclusão:', error);
+      console.error('Detalhes do erro:', {
+        studentId,
+        scheduleId,
+        activityId,
+        day,
+        data
+      });
       throw new Error('Não foi possível registrar a conclusão');
     }
   },

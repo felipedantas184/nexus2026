@@ -17,11 +17,13 @@ import {
   FaChevronRight,
   FaUsers,
   FaEdit,
-  FaHistory
+  FaHistory,
+  FaQuestionCircle
 } from 'react-icons/fa';
 import { schedulesService } from '@/lib/firebase/services/schedulesService';
 import { WeeklySchedule, WeekDaySchedule, ScheduleActivity } from '@/types/schedule.types';
 import { useAuth } from '@/context/AuthContext';
+import { useScheduleProgress } from '@/hooks/useScheduleProgress';
 
 const dayLabels: { [key: string]: string } = {
   monday: 'Segunda-feira',
@@ -47,13 +49,19 @@ export default function ScheduleDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  
+
   const scheduleId = params.id as string;
   const [schedule, setSchedule] = useState<WeeklySchedule | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [completionData, setCompletionData] = useState<Record<string, boolean>>({});
+
+  const {
+    progress,
+    loading: progressLoading,
+    toggleActivityCompletion,
+    isActivityCompleted
+  } = useScheduleProgress({ scheduleId });
 
   // Inicializar com dia da query string ou dia atual
   useEffect(() => {
@@ -61,7 +69,7 @@ export default function ScheduleDetailPage() {
     if (dayParam === 'today') {
       const today = new Date().getDay();
       const dayMap: { [key: number]: string } = {
-        1: 'monday', 2: 'tuesday', 3: 'wednesday', 
+        1: 'monday', 2: 'tuesday', 3: 'wednesday',
         4: 'thursday', 5: 'friday', 6: 'saturday', 0: 'sunday'
       };
       setSelectedDay(dayMap[today]);
@@ -76,14 +84,14 @@ export default function ScheduleDetailPage() {
   useEffect(() => {
     const loadSchedule = async () => {
       if (!user?.id || !scheduleId) return;
-      
+
       try {
         setLoading(true);
         setError(null);
-        
+
         // Carregar cronograma específico
         const scheduleData = await schedulesService.getScheduleById(scheduleId);
-        
+
         if (!scheduleData) {
           throw new Error('Cronograma não encontrado');
         }
@@ -95,15 +103,14 @@ export default function ScheduleDetailPage() {
 
         setSchedule(scheduleData);
 
-        // Carregar progresso do aluno (mock inicial - será implementado depois)
-        const mockCompletion: Record<string, boolean> = {};
-        scheduleData.weekDays.forEach(day => {
-          day.activities.forEach(activity => {
-            // Simulação: 30% das atividades concluídas
-            mockCompletion[activity.id] = Math.random() > 0.7;
-          });
-        });
-        setCompletionData(mockCompletion);
+        // REMOVER: Mock data - o hook useScheduleProgress já carrega os dados reais
+        // const mockCompletion: Record<string, boolean> = {};
+        // scheduleData.weekDays.forEach(day => {
+        //   day.activities.forEach(activity => {
+        //     mockCompletion[activity.id] = Math.random() > 0.7;
+        //   });
+        // });
+        // setCompletionData(mockCompletion);
 
       } catch (err: any) {
         console.error('Erro ao carregar cronograma:', err);
@@ -116,12 +123,19 @@ export default function ScheduleDetailPage() {
     loadSchedule();
   }, [user?.id, scheduleId]);
 
-  const handleActivityToggle = (activityId: string) => {
-    setCompletionData(prev => ({
-      ...prev,
-      [activityId]: !prev[activityId]
-    }));
-    // TODO: Aqui seria chamada a API para salvar o progresso
+  // ATUALIZAR: Usar toggle do hook real
+  const handleActivityToggle = async (activityId: string, day: string) => {
+    if (!schedule) return;
+
+    try {
+      const isCompleted = isActivityCompleted(activityId);
+      await toggleActivityCompletion(activityId, day, !isCompleted, {
+        timeSpent: 0 // ou calcular tempo real
+      });
+    } catch (err: any) {
+      console.error('Erro ao atualizar atividade:', err);
+      alert('Erro ao atualizar atividade: ' + err.message);
+    }
   };
 
   const getSelectedDayData = () => {
@@ -144,36 +158,38 @@ export default function ScheduleDetailPage() {
   const getDayCompletion = (day: WeekDaySchedule) => {
     const activities = day.activities || [];
     if (activities.length === 0) return { completed: 0, total: 0, percentage: 0 };
-    
-    const completed = activities.filter(activity => completionData[activity.id]).length;
+
+    // ATUALIZAR: Usar progress real
+    const completed = activities.filter(activity => isActivityCompleted(activity.id)).length;
     const total = activities.length;
     const percentage = Math.round((completed / total) * 100);
-    
+
     return { completed, total, percentage };
   };
 
   const getOverallCompletion = () => {
     if (!schedule) return { completed: 0, total: 0, percentage: 0 };
-    
+
     let totalActivities = 0;
     let completedActivities = 0;
-    
+
     schedule.weekDays.forEach(day => {
       const dayCompletion = getDayCompletion(day);
       totalActivities += dayCompletion.total;
       completedActivities += dayCompletion.completed;
     });
-    
+
     const percentage = totalActivities > 0 ? Math.round((completedActivities / totalActivities) * 100) : 0;
     return { completed: completedActivities, total: totalActivities, percentage };
   };
 
   const getTotalPoints = () => {
     if (!schedule) return 0;
-    
-    return schedule.weekDays.reduce((total, day) => 
-      total + day.activities.reduce((dayTotal, activity) => 
-        completionData[activity.id] ? dayTotal + (activity.points || 0) : dayTotal, 0
+
+    // ATUALIZAR: Usar progress real
+    return schedule.weekDays.reduce((total, day) =>
+      total + day.activities.reduce((dayTotal, activity) =>
+        isActivityCompleted(activity.id) ? dayTotal + (activity.points || 0) : dayTotal, 0
       ), 0
     );
   };
@@ -182,7 +198,7 @@ export default function ScheduleDetailPage() {
     return activities.reduce((total, activity) => total + (activity.estimatedTime || 0), 0);
   };
 
-  if (loading) {
+  if (loading || progressLoading) {
     return (
       <Container>
         <LoadingState>
@@ -280,7 +296,7 @@ export default function ScheduleDetailPage() {
           {schedule.weekDays.map(daySchedule => {
             const completion = getDayCompletion(daySchedule);
             const isSelected = selectedDay === daySchedule.day;
-            
+
             return (
               <DayTab
                 key={daySchedule.day}
@@ -343,69 +359,100 @@ export default function ScheduleDetailPage() {
                   <EmptySubtext>Aproveite para descansar ou revisar conteúdos anteriores!</EmptySubtext>
                 </EmptyDay>
               ) : (
-                selectedDayData.activities.map((activity, index) => (
-                  <ActivityCard key={activity.id} $completed={completionData[activity.id]}>
-                    <ActivityHeader>
-                      <ActivityIcon>
-                        {getActivityIcon(activity.type)}
-                      </ActivityIcon>
-                      
-                      <ActivityInfo>
-                        <ActivityTitle>
-                          {activity.title}
-                          {activity.isRequired && (
-                            <RequiredBadge>Obrigatória</RequiredBadge>
+                selectedDayData.activities.map((activity, index) => {
+                  // ATUALIZAR: Usar isActivityCompleted do hook real
+                  const isCompleted = isActivityCompleted(activity.id);
+
+                  return (
+                    <ActivityCard key={activity.id} $completed={isCompleted} $type={activity.type}>
+                      <CardHeader>
+                        <ActivityIconWrapper $type={activity.type} $completed={isCompleted}>
+                          {getActivityIcon(activity.type)}
+                        </ActivityIconWrapper>
+
+                        <ActivityContent>
+                          <ActivityTitleRow>
+                            <ActivityTitle>
+                              {activity.title}
+                              {activity.isRequired && <RequiredIndicator title="Atividade obrigatória">•</RequiredIndicator>}
+                            </ActivityTitle>
+
+                            <QuickToggle
+                              onClick={() => handleActivityToggle(activity.id, selectedDayData.day)}
+                              $completed={isCompleted}
+                              title={isCompleted ? "Marcar como não concluída" : "Marcar como concluída"}
+                            >
+                              <ToggleCircle $completed={isCompleted}>
+                                {isCompleted ? <FaCheck size={10} /> : null}
+                              </ToggleCircle>
+                            </QuickToggle>
+                          </ActivityTitleRow>
+
+                          {activity.description && (
+                            <ActivityDescription>
+                              {activity.description}
+                            </ActivityDescription>
                           )}
-                        </ActivityTitle>
-                        <ActivityDescription>
-                          {activity.description}
-                        </ActivityDescription>
-                      </ActivityInfo>
 
-                      <ActivityPoints>
-                        {activity.points} pts
-                      </ActivityPoints>
-                    </ActivityHeader>
+                          <ActivityMeta>
+                            <MetaItem>
+                              <FaClock size={10} />
+                              <span>{activity.estimatedTime}min</span>
+                            </MetaItem>
 
-                    <ActivityDetails>
-                      <DetailItem>
-                        <FaClock size={12} />
-                        {activity.estimatedTime} minutos
-                      </DetailItem>
-                      {activity.instructions && (
-                        <DetailItem>
-                          {activity.instructions}
-                        </DetailItem>
-                      )}
-                    </ActivityDetails>
+                            <MetaItem>
+                              <FaStar size={10} />
+                              <span>{activity.points} pts</span>
+                            </MetaItem>
 
-                    <ActivityActions>
-                      <CompletionToggle
-                        onClick={() => handleActivityToggle(activity.id)}
-                        $completed={completionData[activity.id]}
-                      >
-                        {completionData[activity.id] ? (
-                          <>
-                            <FaCheck size={14} />
-                            Concluída
-                          </>
-                        ) : (
-                          <>
-                            <FaPlay size={14} />
-                            Iniciar
-                          </>
-                        )}
-                      </CompletionToggle>
-                      
-                      <ViewButton
-                        href={`/student/schedules/${scheduleId}/activities/${activity.id}`}
-                        $type={activity.type}
-                      >
-                        Ver Detalhes
-                      </ViewButton>
-                    </ActivityActions>
-                  </ActivityCard>
-                ))
+                            <ActivityTypeBadge $type={activity.type}>
+                              {activity.type === 'text' ? 'Texto' :
+                                activity.type === 'quiz' ? 'Quiz' :
+                                  activity.type === 'video' ? 'Vídeo' :
+                                    activity.type === 'checklist' ? 'Checklist' :
+                                      activity.type === 'habit' ? 'Hábito' : 'Arquivo'}
+                            </ActivityTypeBadge>
+                          </ActivityMeta>
+                        </ActivityContent>
+                      </CardHeader>
+
+                      <CardFooter>
+                        <ActionButtons>
+                          <DetailButton
+                            href={`/student/schedules/${scheduleId}/activities/${activity.id}`}
+                            $type={activity.type}
+                          >
+                            <FaPlay size={12} />
+                            Ver Detalhes
+                          </DetailButton>
+
+                          {activity.instructions && (
+                            <InstructionsButton
+                              onClick={() => alert(activity.instructions)}
+                              title="Ver instruções"
+                            >
+                              <FaQuestionCircle size={12} />
+                            </InstructionsButton>
+                          )}
+                        </ActionButtons>
+
+                        <CompletionStatus $completed={isCompleted}>
+                          {isCompleted ? (
+                            <>
+                              <FaCheck size={10} />
+                              <span>Concluída • {progress[activity.id]?.completedAt?.toLocaleDateString('pt-BR') || 'Hoje'}</span>
+                            </>
+                          ) : (
+                            <>
+                              <FaClock size={10} />
+                              <span>Pendente • Clique no círculo para marcar</span>
+                            </>
+                          )}
+                        </CompletionStatus>
+                      </CardFooter>
+                    </ActivityCard>
+                  );
+                })
               )}
             </ActivitiesList>
           </DayContent>
@@ -424,12 +471,12 @@ export default function ScheduleDetailPage() {
             <FaChevronLeft size={16} />
             Dia Anterior
           </NavButton>
-          
+
           <TodayButton
             onClick={() => {
               const today = new Date().getDay();
               const dayMap: { [key: number]: string } = {
-                1: 'monday', 2: 'tuesday', 3: 'wednesday', 
+                1: 'monday', 2: 'tuesday', 3: 'wednesday',
                 4: 'thursday', 5: 'friday', 6: 'saturday', 0: 'sunday'
               };
               setSelectedDay(dayMap[today]);
@@ -438,7 +485,7 @@ export default function ScheduleDetailPage() {
             <FaCalendarDay size={16} />
             Hoje
           </TodayButton>
-          
+
           <NavButton
             onClick={() => {
               const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -726,130 +773,233 @@ const ActivitiesList = styled.div`
   gap: 16px;
 `;
 
-const ActivityCard = styled.div<{ $completed: boolean }>`
+const ActivityCard = styled.div<{ $completed: boolean; $type: string }>`
   background: ${props => props.$completed ? '#f0fdf4' : 'white'};
-  border: 2px solid ${props => props.$completed ? '#10b981' : '#e2e8f0'};
+  border: 1px solid ${props => props.$completed ? '#10b98140' : '#e2e8f0'};
+  border-left: 4px solid ${props => {
+    if (props.$completed) return '#10b981';
+    switch (props.$type) {
+      case 'text': return '#6366f1';
+      case 'quiz': return '#f59e0b';
+      case 'video': return '#ef4444';
+      case 'checklist': return '#10b981';
+      case 'file': return '#8b5cf6';
+      case 'habit': return '#06b6d4';
+      default: return '#6366f1';
+    }
+  }};
   border-radius: 12px;
-  padding: 20px;
+  padding: 16px;
   transition: all 0.2s ease;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 
   &:hover {
-    border-color: #6366f1;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    border-color: ${props => {
+    if (props.$completed) return '#10b98160';
+    switch (props.$type) {
+      case 'text': return '#6366f160';
+      case 'quiz': return '#f59e0b60';
+      case 'video': return '#ef444460';
+      case 'checklist': return '#10b98160';
+      case 'file': return '#8b5cf660';
+      case 'habit': return '#06b6d460';
+      default: return '#6366f160';
+    }
+  }};
   }
 `;
 
-const ActivityHeader = styled.div`
+const CardHeader = styled.div`
   display: flex;
-  align-items: flex-start;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 `;
 
-const ActivityIcon = styled.div`
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  background: #f1f5f9;
+const ActivityIconWrapper = styled.div<{ $type: string; $completed: boolean }>`
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: ${props => {
+    if (props.$completed) return '#10b98120';
+    switch (props.$type) {
+      case 'text': return '#6366f120';
+      case 'quiz': return '#f59e0b20';
+      case 'video': return '#ef444420';
+      case 'checklist': return '#10b98120';
+      case 'file': return '#8b5cf620';
+      case 'habit': return '#06b6d420';
+      default: return '#6366f120';
+    }
+  }};
+  color: ${props => {
+    if (props.$completed) return '#10b981';
+    switch (props.$type) {
+      case 'text': return '#6366f1';
+      case 'quiz': return '#f59e0b';
+      case 'video': return '#ef4444';
+      case 'checklist': return '#10b981';
+      case 'file': return '#8b5cf6';
+      case 'habit': return '#06b6d4';
+      default: return '#6366f1';
+    }
+  }};
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 18px;
   flex-shrink: 0;
+  transition: all 0.2s ease;
 `;
 
-const ActivityInfo = styled.div`
+const ActivityContent = styled.div`
   flex: 1;
   min-width: 0;
 `;
 
-const ActivityTitle = styled.h3`
-  font-size: 16px;
-  font-weight: 600;
-  color: #0f172a;
-  margin: 0 0 4px 0;
+const ActivityTitleRow = styled.div`
   display: flex;
-  align-items: center;
+  justify-content: space-between;
+  align-items: flex-start;
   gap: 8px;
+  margin-bottom: 6px;
 `;
 
-const RequiredBadge = styled.span`
-  background: #fef2f2;
-  color: #dc2626;
-  padding: 2px 8px;
-  border-radius: 8px;
-  font-size: 10px;
+const ActivityTitle = styled.h3`
+  font-size: 15px;
   font-weight: 600;
+  color: #0f172a;
+  margin: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.3;
+`;
+
+const RequiredIndicator = styled.span`
+  color: #dc2626;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+`;
+
+const QuickToggle = styled.button<{ $completed: boolean }>`
+  width: 28px;
+  height: 28px;
+  border: 2px solid ${props => props.$completed ? '#10b981' : '#d1d5db'};
+  border-radius: 50%;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  padding: 0;
+  
+  &:hover {
+    border-color: ${props => props.$completed ? '#dc2626' : '#10b981'};
+    background: ${props => props.$completed ? '#fef2f210' : '#10b98110'};
+    transform: scale(1.1);
+  }
+`;
+
+const ToggleCircle = styled.div<{ $completed: boolean }>`
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: ${props => props.$completed ? '#10b981' : 'transparent'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 8px;
+  transition: all 0.2s ease;
 `;
 
 const ActivityDescription = styled.p`
   color: #64748b;
-  font-size: 14px;
-  margin: 0;
+  font-size: 13px;
+  margin: 0 0 10px 0;
   line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 `;
 
-const ActivityPoints = styled.div`
-  font-size: 16px;
-  font-weight: 700;
-  color: #f59e0b;
-  background: #fefce8;
-  padding: 6px 12px;
-  border-radius: 8px;
-  flex-shrink: 0;
-`;
-
-const ActivityDetails = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
-  padding-left: 52px;
-`;
-
-const DetailItem = styled.div`
+const ActivityMeta = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #64748b;
+  gap: 12px;
+  flex-wrap: wrap;
 `;
 
-const ActivityActions = styled.div`
+const MetaItem = styled.div`
   display: flex;
-  gap: 12px;
-  padding-left: 52px;
-
-  @media (max-width: 480px) {
-    flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+  
+  svg {
+    color: #94a3b8;
   }
 `;
 
-const CompletionToggle = styled.button<{ $completed: boolean }>`
+const ActivityTypeBadge = styled.span<{ $type: string }>`
+  font-size: 11px;
+  font-weight: 700;
+  color: ${props => {
+    switch (props.$type) {
+      case 'text': return '#6366f1';
+      case 'quiz': return '#f59e0b';
+      case 'video': return '#ef4444';
+      case 'checklist': return '#10b981';
+      case 'file': return '#8b5cf6';
+      case 'habit': return '#06b6d4';
+      default: return '#64748b';
+    }
+  }};
+  background: ${props => {
+    switch (props.$type) {
+      case 'text': return '#6366f110';
+      case 'quiz': return '#f59e0b10';
+      case 'video': return '#ef444410';
+      case 'checklist': return '#10b98110';
+      case 'file': return '#8b5cf610';
+      case 'habit': return '#06b6d410';
+      default: return '#f1f5f9';
+    }
+  }};
+  padding: 3px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+`;
+
+const CardFooter = styled.div`
+  border-top: 1px solid #f1f5f9;
+  padding-top: 12px;
+  margin-top: 12px;
+`;
+
+const ActionButtons = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+`;
+
+const DetailButton = styled(Link) <{ $type: string }>`
   flex: 1;
-  background: ${props => props.$completed ? '#10b981' : '#f1f5f9'};
-  color: ${props => props.$completed ? 'white' : '#374151'};
-  border: none;
-  border-radius: 8px;
-  padding: 12px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
   justify-content: center;
-  transition: all 0.2s ease;
-
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  }
-`;
-
-const ViewButton = styled(Link)<{ $type: string }>`
-  flex: 1;
   background: ${props => {
     switch (props.$type) {
       case 'text': return '#6366f1';
@@ -864,19 +1014,57 @@ const ViewButton = styled(Link)<{ $type: string }>`
   color: white;
   border: none;
   border-radius: 8px;
-  padding: 12px 16px;
-  font-size: 14px;
+  padding: 8px 12px;
+  font-size: 12px;
   font-weight: 600;
   text-decoration: none;
-  text-align: center;
   transition: all 0.2s ease;
-
+  cursor: pointer;
+  
   &:hover {
     transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    opacity: 0.9;
   }
 `;
 
+const InstructionsButton = styled.button`
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  
+  &:hover {
+    background: #e2e8f0;
+    color: #374151;
+    transform: translateY(-1px);
+  }
+`;
+
+const CompletionStatus = styled.div<{ $completed: boolean }>`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: ${props => props.$completed ? '#10b981' : '#94a3b8'};
+  font-weight: 500;
+  
+  svg {
+    flex-shrink: 0;
+  }
+  
+  span {
+    flex: 1;
+  }
+`;
 const NavigationControls = styled.div`
   display: flex;
   justify-content: space-between;

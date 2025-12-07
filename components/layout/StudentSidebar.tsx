@@ -114,50 +114,55 @@ export default function StudentSidebar({ open = true, student }: StudentSidebarP
 }
 
 const Container = styled.nav<{ open: boolean }>`
-  background: linear-gradient(180deg, #7c3aed 0%, #8b5cf6 100%);
+  background: linear-gradient(180deg, #6d28d9 0%, #4c1d95 100%);
   width: 280px;
   height: 100%;
-  padding: 20px 0;
+  padding: 24px 0;
   display: flex;
   flex-direction: column;
-  transition: transform 0.3s ease;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
-  
+  transition: transform 0.35s ease;
+  box-shadow: 3px 0 18px rgba(0, 0, 0, 0.15);
+
   ${props => !props.open && `
     transform: translateX(-100%);
   `}
 `;
 
+// Wrapper mais organizado
 const Wrapper = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 0 16px;
+  padding: 0 20px;
 `;
 
+// Card do usuário com brilho
 const UserHeader = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  margin-bottom: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 14px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  margin-bottom: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(6px);
 `;
 
+// Avatar com glow
 const UserAvatar = styled.div`
-  width: 50px;
-  height: 50px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.2);
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.22);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
+  font-weight: 800;
   color: white;
-  font-size: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  font-size: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
 `;
 
 const UserInfo = styled.div`
@@ -168,7 +173,7 @@ const UserInfo = styled.div`
 const UserName = styled.div`
   font-weight: 600;
   color: white;
-  font-size: 14px;
+  font-size: 15px;
   margin-bottom: 4px;
   white-space: nowrap;
   overflow: hidden;
@@ -188,21 +193,22 @@ const StatsSection = styled.div`
 `;
 
 const StreakCard = styled.div`
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 16px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 18px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 14px;
+  margin-bottom: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(6px);
 `;
 
 const StreakIcon = styled.div`
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  background: rgba(249, 115, 22, 0.2);
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(249, 115, 22, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -213,15 +219,15 @@ const StreakInfo = styled.div`
 `;
 
 const StreakNumber = styled.div`
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 26px;
+  font-weight: 800;
   color: white;
   line-height: 1;
 `;
 
 const StreakLabel = styled.div`
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.75);
 `;
 
 const QuickStats = styled.div`
@@ -231,18 +237,23 @@ const QuickStats = styled.div`
 `;
 
 const QuickStat = styled.div`
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 14px;
   text-align: center;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(5px);
+  transition: transform 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
 `;
 
 const StatValue = styled.div`
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
   color: white;
-  line-height: 1;
   margin-bottom: 2px;
 `;
 
@@ -262,27 +273,29 @@ const Menu = styled.ul`
 `;
 
 const MenuItem = styled.li`
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
-  
+  transition: all 0.25s ease;
+
   &:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.12);
   }
 `;
 
-const PageLink = styled(Link) <{ active: boolean }>`
-  padding: 12px 16px;
+const PageLink = styled(Link)<{ active: boolean }>`
+  padding: 12px 18px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  color: ${props => props.active ? '#8b5cf6' : 'rgba(255, 255, 255, 0.8)'};
+  gap: 14px;
+  color: ${props => props.active ? '#a78bfa' : 'rgba(255, 255, 255, 0.85)'};
   text-decoration: none;
   font-weight: 500;
-  transition: all 0.2s ease;
-  background: ${props => props.active ? 'rgba(255, 255, 255, 0.1)' : 'transparent'};
-  
+  transition: all 0.25s ease;
+  background: ${props => props.active ? 'rgba(255, 255, 255, 0.14)' : 'transparent'};
+  border-left: ${props => props.active ? '3px solid #c4b5fd' : '3px solid transparent'};
+
   &:hover {
-    color: #8b5cf6;
+    color: #c4b5fd;
     transform: translateX(4px);
   }
 
@@ -291,12 +304,23 @@ const PageLink = styled(Link) <{ active: boolean }>`
   }
 `;
 
+// Hoje — card mais sofisticado
 const TodayProgress = styled.div`
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(6px);
+`;
+
+const ProgressBar = styled.div`
+  width: 100%;
+  height: 7px;
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 10px;
 `;
 
 const ProgressTitle = styled.h4`
@@ -306,21 +330,12 @@ const ProgressTitle = styled.h4`
   margin: 0 0 12px 0;
 `;
 
-const ProgressBar = styled.div`
-  width: 100%;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
-  overflow: hidden;
-  margin-bottom: 8px;
-`;
-
 const ProgressFill = styled.div<{ width: string }>`
   width: ${props => props.width};
   height: 100%;
   background: linear-gradient(90deg, #10b981, #34d399);
-  border-radius: 3px;
-  transition: width 0.3s ease;
+  border-radius: 4px;
+  transition: width 0.4s ease;
 `;
 
 const ProgressText = styled.div`
