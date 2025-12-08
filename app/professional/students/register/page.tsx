@@ -107,61 +107,61 @@ export default function RegisterStudentPage() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!user?.id) return;
+    e.preventDefault();
+    if (!user?.id) return;
 
-  setIsSubmitting(true);
-  try {
-    console.log('Dados do formulário:', formData);
-    
-    const studentData: Omit<Student, 'id' | 'createdAt' | 'updatedAt'> = {
-      name: formData.name,
-      email: formData.email,
-      role: 'student',
-      personalInfo: formData.personalInfo,
-      medicalInfo: formData.medicalInfo.diagnoses.length > 0 || formData.medicalInfo.medications.length > 0 || formData.medicalInfo.observations ? formData.medicalInfo : undefined,
-      address: formData.address.street ? formData.address : undefined,
-      assignedProfessionals: [user.id],
-      assignedPrograms: [],
-      streak: 0,
-      totalPoints: 0,
-      level: 1,
-      isActive: true
-    };
+    setIsSubmitting(true);
+    try {
+      console.log('Dados do formulário:', formData);
 
-    console.log('Enviando para studentsService...');
-    
-    // 🔥 AGORA PRECISAMOS PASSAR AS CREDENCIAIS DO PROFISSIONAL
-    // Em um cenário real, você teria essas credenciais salvas de forma segura
-    // Para MVP, vamos pedir ao usuário para informar a senha atual
-    const professionalPassword = prompt(
-      'Para criar o aluno, confirme sua senha atual:'
-    );
+      const studentData: Omit<Student, 'id' | 'createdAt' | 'updatedAt'> = {
+        name: formData.name,
+        email: formData.email,
+        role: 'student',
+        personalInfo: formData.personalInfo,
+        medicalInfo: formData.medicalInfo.diagnoses.length > 0 || formData.medicalInfo.medications.length > 0 || formData.medicalInfo.observations ? formData.medicalInfo : undefined,
+        address: formData.address.street ? formData.address : undefined,
+        assignedProfessionals: [user.id],
+        assignedPrograms: [],
+        streak: 0,
+        totalPoints: 0,
+        level: 1,
+        isActive: true
+      };
 
-    if (!professionalPassword) {
-      alert('Operação cancelada. A senha é necessária para criar o aluno.');
-      return;
+      console.log('Enviando para studentsService...');
+
+      // 🔥 AGORA PRECISAMOS PASSAR AS CREDENCIAIS DO PROFISSIONAL
+      // Em um cenário real, você teria essas credenciais salvas de forma segura
+      // Para MVP, vamos pedir ao usuário para informar a senha atual
+      const professionalPassword = prompt(
+        'Para criar o aluno, confirme sua senha atual:'
+      );
+
+      if (!professionalPassword) {
+        alert('Operação cancelada. A senha é necessária para criar o aluno.');
+        return;
+      }
+
+      const result = await studentsService.createStudent(
+        studentData,
+        formData.password,
+        user.email, // email do profissional
+        professionalPassword // senha do profissional
+      );
+
+      console.log('Aluno criado com sucesso:', result);
+
+      alert(`Aluno cadastrado com sucesso!\n\nEmail: ${formData.email}\nSenha: ${formData.password}\n\nCompartilhe estas credenciais com o aluno.`);
+
+      router.push('/professional/students');
+    } catch (error: any) {
+      console.error('Erro ao cadastrar aluno:', error);
+      alert(`Erro ao cadastrar aluno: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const result = await studentsService.createStudent(
-      studentData, 
-      formData.password,
-      user.email, // email do profissional
-      professionalPassword // senha do profissional
-    );
-    
-    console.log('Aluno criado com sucesso:', result);
-    
-    alert(`Aluno cadastrado com sucesso!\n\nEmail: ${formData.email}\nSenha: ${formData.password}\n\nCompartilhe estas credenciais com o aluno.`);
-    
-    router.push('/professional/students');
-  } catch (error: any) {
-    console.error('Erro ao cadastrar aluno:', error);
-    alert(`Erro ao cadastrar aluno: ${error.message}`);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
   const formatCPF = (value: string) => {
     return value

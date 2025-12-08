@@ -12,7 +12,6 @@ import {
   FaUserGraduate,
   FaIdCard,
   FaBriefcaseMedical,
-  FaChalkboardTeacher,
   FaUserTie
 } from 'react-icons/fa';
 import { createProfessional } from '@/lib/firebase/authService';
@@ -66,26 +65,6 @@ export default function ProfessionalRegister() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case 'psychologist': return <FaUserTie size={16} />;
-      case 'psychiatrist': return <FaBriefcaseMedical size={16} />;
-      case 'monitor': return <FaChalkboardTeacher size={16} />;
-      case 'coordinator': return <FaUserGraduate size={16} />;
-      default: return <FaUser size={16} />;
-    }
-  };
-
-  const getRoleLabel = (role: string) => {
-    const labels: { [key: string]: string } = {
-      psychologist: 'Psicólogo',
-      psychiatrist: 'Psiquiatra',
-      monitor: 'Monitor',
-      coordinator: 'Coordenador'
-    };
-    return labels[role] || 'Profissional';
   };
 
   return (

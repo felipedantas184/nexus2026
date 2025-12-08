@@ -1,4 +1,3 @@
-// components/schedules/WeekScheduleEditor.tsx - NOVO ARQUIVO
 'use client';
 
 import { useState } from 'react';
@@ -10,9 +9,10 @@ import {
   FaClock,
   FaStar,
   FaCheckCircle,
-  FaRegCircle
+  FaRegCircle,
+  FaCopy
 } from 'react-icons/fa';
-import CreateActivityModal from '@/components/programs/CreateActivityModal';
+import QuickActivityModal from './QuickActivityModal'; // NOVO MODAL
 import { WeekDaySchedule, ScheduleActivity } from '@/types/schedule.types';
 
 interface WeekScheduleEditorProps {
@@ -57,28 +57,37 @@ export default function WeekScheduleEditor({ weekDays, onChange }: WeekScheduleE
     setIsActivityModalOpen(true);
   };
 
-  const handleSaveActivity = (activityData: any) => {
+  const handleSaveActivity = (activityData: any, repeatDays: string[]) => {
     if (!selectedDay) return;
 
-    const updatedWeekDays = weekDays.map(day => {
-      if (day.day !== selectedDay) return day;
+    const updatedWeekDays = [...weekDays];
 
-      if (editingActivity) {
-        // Editar atividade existente
-        const updatedActivities = day.activities.map(activity =>
+    // Para cada dia selecionado (incluindo o dia original)
+    repeatDays.forEach(day => {
+      const dayIndex = updatedWeekDays.findIndex(d => d.day === day);
+      if (dayIndex === -1) return;
+
+      const daySchedule = updatedWeekDays[dayIndex];
+      
+      if (editingActivity && day === selectedDay) {
+        // Editar atividade existente (apenas no dia original)
+        const updatedActivities = daySchedule.activities.map(activity =>
           activity.id === editingActivity.activity.id 
             ? { ...activity, ...activityData }
             : activity
         );
-        return { ...day, activities: updatedActivities };
+        updatedWeekDays[dayIndex] = { ...daySchedule, activities: updatedActivities };
       } else {
-        // Adicionar nova atividade
+        // Adicionar nova atividade (ou copiar para outros dias)
         const newActivity: ScheduleActivity = {
           ...activityData,
           id: `activity-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          order: day.activities.length
+          order: daySchedule.activities.length
         };
-        return { ...day, activities: [...day.activities, newActivity] };
+        updatedWeekDays[dayIndex] = { 
+          ...daySchedule, 
+          activities: [...daySchedule.activities, newActivity] 
+        };
       }
     });
 
@@ -101,6 +110,26 @@ export default function WeekScheduleEditor({ weekDays, onChange }: WeekScheduleE
 
       onChange(updatedWeekDays);
     }
+  };
+
+  const handleDuplicateActivity = (day: string, activity: ScheduleActivity) => {
+    const newActivity: ScheduleActivity = {
+      ...activity,
+      id: `activity-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      title: `${activity.title} (Cópia)`,
+      order: weekDays.find(d => d.day === day)?.activities.length || 0
+    };
+
+    const updatedWeekDays = weekDays.map(weekDay => {
+      if (weekDay.day !== day) return weekDay;
+      
+      return {
+        ...weekDay,
+        activities: [...weekDay.activities, newActivity]
+      };
+    });
+
+    onChange(updatedWeekDays);
   };
 
   const handleUpdateDayNotes = (day: string, notes: string) => {
@@ -133,6 +162,13 @@ export default function WeekScheduleEditor({ weekDays, onChange }: WeekScheduleE
 
   return (
     <Container>
+      <HeaderInfo>
+        <HeaderTitle>Cronograma Semanal</HeaderTitle>
+        <HeaderHint>
+          💡 Clique em "Adicionar Atividade" e selecione outros dias para replicar a mesma atividade automaticamente.
+        </HeaderHint>
+      </HeaderInfo>
+
       <DaysGrid>
         {weekDays.map((daySchedule) => {
           const totalTime = getTotalTime(daySchedule.activities);
@@ -175,6 +211,12 @@ export default function WeekScheduleEditor({ weekDays, onChange }: WeekScheduleE
 
                     <ActivityActions>
                       <ActionButton 
+                        onClick={() => handleDuplicateActivity(daySchedule.day, activity)}
+                        title="Duplicar atividade"
+                      >
+                        <FaCopy size={12} />
+                      </ActionButton>
+                      <ActionButton 
                         onClick={() => handleEditActivity(daySchedule.day, activity)}
                         title="Editar atividade"
                       >
@@ -196,6 +238,7 @@ export default function WeekScheduleEditor({ weekDays, onChange }: WeekScheduleE
                 <EmptyDay>
                   <EmptyIcon>📅</EmptyIcon>
                   <EmptyText>Nenhuma atividade</EmptyText>
+                  <EmptyHint>Clique abaixo para adicionar</EmptyHint>
                 </EmptyDay>
               )}
 
@@ -218,9 +261,9 @@ export default function WeekScheduleEditor({ weekDays, onChange }: WeekScheduleE
         })}
       </DaysGrid>
 
-      {/* Modal de Atividade */}
+      {/* NOVO MODAL OTIMIZADO */}
       {selectedDay && (
-        <CreateActivityModal
+        <QuickActivityModal
           isOpen={isActivityModalOpen}
           onClose={() => {
             setIsActivityModalOpen(false);
@@ -228,26 +271,47 @@ export default function WeekScheduleEditor({ weekDays, onChange }: WeekScheduleE
             setEditingActivity(null);
           }}
           onSave={handleSaveActivity}
-          moduleId={selectedDay} // Reutilizando a prop moduleId como day
-          existingActivities={[]}
-          // initialData={editingActivity?.activity}
-          // isEditing={!!editingActivity}
+          initialDay={selectedDay}
+          isEditing={!!editingActivity}
+          initialData={editingActivity?.activity}
         />
       )}
     </Container>
   );
 }
 
-// ========== ESTILOS ==========
+// ========== ESTILOS ADICIONAIS ==========
 const Container = styled.div`
   display: flex;
   flex-direction: column;
   gap: 24px;
 `;
 
+const HeaderInfo = styled.div`
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 20px;
+  color: white;
+  margin-bottom: 8px;
+`;
+
+const HeaderTitle = styled.h2`
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  color: white;
+`;
+
+const HeaderHint = styled.p`
+  font-size: 14px;
+  margin: 0;
+  opacity: 0.9;
+  font-weight: 500;
+`;
+
 const DaysGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 20px;
 
   @media (max-width: 768px) {
@@ -258,16 +322,18 @@ const DaysGrid = styled.div`
 const DayCard = styled.div`
   background: #f8fafc;
   border: 2px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 20px;
   transition: all 0.3s ease;
   min-height: 400px;
   display: flex;
   flex-direction: column;
+  position: relative;
 
   &:hover {
     border-color: #6366f1;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 8px 25px -5px rgba(99, 102, 241, 0.1);
+    transform: translateY(-2px);
   }
 `;
 
@@ -277,7 +343,7 @@ const DayHeader = styled.div`
   align-items: flex-start;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 2px solid #e2e8f0;
 `;
 
 const DayInfo = styled.div`
@@ -286,42 +352,48 @@ const DayInfo = styled.div`
 
 const DayName = styled.h3`
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   color: #0f172a;
   margin: 0 0 4px 0;
 `;
 
 const DayAbbreviation = styled.span`
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   color: #6366f1;
   background: #eef2ff;
-  padding: 2px 8px;
+  padding: 4px 10px;
   border-radius: 12px;
+  letter-spacing: 0.5px;
 `;
 
 const DayStats = styled.div`
   display: flex;
-  gap: 8px;
+  gap: 12px;
 `;
 
 const Stat = styled.span`
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 12px;
+  gap: 6px;
+  font-size: 13px;
   color: #64748b;
-  font-weight: 500;
+  font-weight: 600;
+  background: white;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
 `;
 
 const ActivitiesList = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 16px;
   max-height: 300px;
   overflow-y: auto;
+  padding-right: 4px;
 `;
 
 const ActivityItem = styled.div`
@@ -331,25 +403,28 @@ const ActivityItem = styled.div`
   padding: 12px;
   background: white;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 10px;
   transition: all 0.2s ease;
+  position: relative;
 
   &:hover {
     border-color: #d1d5db;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    transform: translateY(-1px);
   }
 `;
 
 const ActivityIcon = styled.div`
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  background: #f1f5f9;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 16px;
   flex-shrink: 0;
+  color: white;
 `;
 
 const ActivityContent = styled.div`
@@ -361,53 +436,74 @@ const ActivityTitle = styled.div`
   font-size: 14px;
   font-weight: 600;
   color: #0f172a;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 `;
 
 const ActivityDetails = styled.div`
   display: flex;
-  gap: 8px;
+  gap: 10px;
   font-size: 12px;
   color: #64748b;
   flex-wrap: wrap;
+  align-items: center;
 `;
 
 const ActivityTime = styled.span`
-  font-weight: 500;
+  font-weight: 600;
+  background: #f0f9ff;
+  padding: 2px 8px;
+  border-radius: 6px;
+  color: #0369a1;
 `;
 
 const ActivityPoints = styled.span`
-  font-weight: 600;
+  font-weight: 700;
   color: #f59e0b;
+  background: #fefce8;
+  padding: 2px 8px;
+  border-radius: 6px;
 `;
 
 const RequiredBadge = styled.span`
   background: #fef2f2;
   color: #dc2626;
-  padding: 2px 6px;
-  border-radius: 8px;
-  font-weight: 500;
-  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 `;
 
 const ActivityActions = styled.div`
   display: flex;
   gap: 4px;
   flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  
+  ${ActivityItem}:hover & {
+    opacity: 1;
+  }
 `;
 
 const ActionButton = styled.button<{ $danger?: boolean }>`
   background: ${props => props.$danger ? '#fef2f2' : '#f1f5f9'};
   color: ${props => props.$danger ? '#dc2626' : '#64748b'};
   border: none;
-  border-radius: 6px;
-  padding: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  border-radius: 8px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
 
   &:hover {
     background: ${props => props.$danger ? '#fecaca' : '#e2e8f0'};
@@ -423,69 +519,86 @@ const EmptyDay = styled.div`
   justify-content: center;
   color: #94a3b8;
   padding: 40px 20px;
+  text-align: center;
 `;
 
 const EmptyIcon = styled.div`
-  font-size: 32px;
-  margin-bottom: 8px;
+  font-size: 40px;
+  margin-bottom: 12px;
+  opacity: 0.5;
 `;
 
 const EmptyText = styled.p`
   font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+`;
+
+const EmptyHint = styled.p`
+  font-size: 12px;
   margin: 0;
-  text-align: center;
+  opacity: 0.7;
 `;
 
 const AddActivityButton = styled.button`
-  background: #f1f5f9;
-  color: #64748b;
-  border: 1px dashed #cbd5e1;
-  border-radius: 8px;
-  padding: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 14px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   gap: 8px;
   justify-content: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 6px -1px rgba(102, 126, 234, 0.3);
 
   &:hover {
-    background: #e2e8f0;
-    border-color: #6366f1;
-    color: #6366f1;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(102, 126, 234, 0.4);
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 `;
 
 const DayNotes = styled.div`
   margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
 `;
 
 const NotesLabel = styled.label`
   display: block;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   color: #374151;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 `;
 
 const NotesTextarea = styled.textarea`
   width: 100%;
-  padding: 8px 12px;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 12px;
+  padding: 10px 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 13px;
   resize: vertical;
   font-family: inherit;
   background: white;
   transition: all 0.2s ease;
+  min-height: 60px;
 
   &:focus {
     outline: none;
     border-color: #6366f1;
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
   }
 
   &::placeholder {
