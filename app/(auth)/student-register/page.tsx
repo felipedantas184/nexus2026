@@ -226,7 +226,7 @@ export default function StudentRegister() {
         </Form>
 
         <Footer>
-          <LoginLink href="/login">Já possui uma conta? Faça login</LoginLink>
+          <LoginLink href="/student-login">Já possui uma conta? Faça login</LoginLink>
         </Footer>
       </RegisterCard>
     </Container>
