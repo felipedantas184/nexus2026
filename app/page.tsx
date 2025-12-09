@@ -763,6 +763,8 @@ const HeroTitle = styled.h1`
 
   span {
     background: linear-gradient(135deg, #a5b4fc, #818cf8, #c7d2fe);
+    -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
   }
 
