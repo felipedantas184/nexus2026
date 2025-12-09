@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
-import { 
-  FaTimes, 
-  FaSave, 
-  FaList, 
-  FaVideo, 
+import {
+  FaTimes,
+  FaSave,
+  FaList,
+  FaVideo,
   FaQuestionCircle,
   FaFile,
   FaSync,
@@ -40,54 +40,54 @@ const dayOptions = [
 ];
 
 const activityTypes = [
-  { 
-    type: 'text', 
-    icon: FaFileArchive, 
-    label: 'Texto', 
+  {
+    type: 'text',
+    icon: FaFileArchive,
+    label: 'Texto',
     color: '#6366f1',
-    description: 'Conteúdo textual para leitura' 
+    description: 'Conteúdo textual para leitura'
   },
-  { 
-    type: 'checklist', 
-    icon: FaList, 
-    label: 'Checklist', 
+  {
+    type: 'checklist',
+    icon: FaList,
+    label: 'Checklist',
     color: '#10b981',
-    description: 'Lista de itens para marcar' 
+    description: 'Lista de itens para marcar'
   },
-  { 
-    type: 'video', 
-    icon: FaVideo, 
-    label: 'Vídeo', 
+  {
+    type: 'video',
+    icon: FaVideo,
+    label: 'Vídeo',
     color: '#ef4444',
-    description: 'Vídeo educativo' 
+    description: 'Vídeo educativo'
   },
-  { 
-    type: 'quiz', 
-    icon: FaQuestionCircle, 
-    label: 'Quiz', 
+  {
+    type: 'quiz',
+    icon: FaQuestionCircle,
+    label: 'Quiz',
     color: '#f59e0b',
-    description: 'Questionário interativo' 
+    description: 'Questionário interativo'
   },
-  { 
-    type: 'file', 
-    icon: FaFile, 
-    label: 'Arquivo', 
+  {
+    type: 'file',
+    icon: FaFile,
+    label: 'Arquivo',
     color: '#8b5cf6',
-    description: 'Material para download' 
+    description: 'Material para download'
   },
-  { 
-    type: 'habit', 
-    icon: FaSync, 
-    label: 'Hábito', 
+  {
+    type: 'habit',
+    icon: FaSync,
+    label: 'Hábito',
     color: '#06b6d4',
-    description: 'Atividade recorrente' 
+    description: 'Atividade recorrente'
   }
 ];
 
-export default function QuickActivityModal({ 
-  isOpen, 
-  onClose, 
-  onSave, 
+export default function QuickActivityModal({
+  isOpen,
+  onClose,
+  onSave,
   initialDay,
   isEditing = false,
   initialData = null
@@ -96,7 +96,7 @@ export default function QuickActivityModal({
   const [repeatDays, setRepeatDays] = useState<string[]>([initialDay]);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Estados do formulário
   const [formData, setFormData] = useState({
     title: '',
@@ -146,7 +146,7 @@ export default function QuickActivityModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validar campos obrigatórios
     if (!formData.title.trim()) {
       alert('Por favor, informe o título da atividade');
@@ -180,12 +180,12 @@ export default function QuickActivityModal({
         activityData.content = formData.content;
         activityData.richText = false;
         break;
-      
+
       case 'video':
         activityData.videoUrl = formData.videoUrl;
         activityData.thumbnailUrl = `https://img.youtube.com/vi/${extractYouTubeId(formData.videoUrl)}/0.jpg`;
         break;
-      
+
       case 'checklist':
         activityData.items = formData.checklistItems
           .filter(item => item.trim())
@@ -196,7 +196,7 @@ export default function QuickActivityModal({
             order: index
           }));
         break;
-      
+
       case 'quiz':
         activityData.passingScore = 70;
         activityData.questions = formData.quizQuestions
@@ -210,7 +210,7 @@ export default function QuickActivityModal({
             explanation: q.explanation
           }));
         break;
-      
+
       case 'file':
         if (formData.file) {
           // Aqui você implementaria o upload real
@@ -224,7 +224,7 @@ export default function QuickActivityModal({
           activityData.fileType = initialData.fileType;
         }
         break;
-      
+
       case 'habit':
         activityData.frequency = formData.habitFrequency;
         activityData.schedule = {
@@ -322,7 +322,7 @@ export default function QuickActivityModal({
   const updateChecklistItem = (index: number, value: string) => {
     setFormData(prev => ({
       ...prev,
-      checklistItems: prev.checklistItems.map((item, i) => 
+      checklistItems: prev.checklistItems.map((item, i) =>
         i === index ? value : item
       )
     }));
@@ -343,15 +343,15 @@ export default function QuickActivityModal({
   const updateQuizQuestion = (index: number, field: string, value: any) => {
     setFormData(prev => ({
       ...prev,
-      quizQuestions: prev.quizQuestions.map((q, i) => 
+      quizQuestions: prev.quizQuestions.map((q, i) =>
         i === index ? { ...q, [field]: value } : q
       )
     }));
   };
 
   const toggleRepeatDay = (day: string) => {
-    setRepeatDays(prev => 
-      prev.includes(day) 
+    setRepeatDays(prev =>
+      prev.includes(day)
         ? prev.filter(d => d !== day)
         : [...prev, day]
     );
@@ -375,7 +375,7 @@ export default function QuickActivityModal({
           {/* Seção 1: Tipo e Dias */}
           <Section>
             <SectionTitle>Configuração Rápida</SectionTitle>
-            
+
             <Grid2Col>
               <InputGroup>
                 <Label>Tipo de Atividade *</Label>
@@ -402,8 +402,13 @@ export default function QuickActivityModal({
                   {dayOptions.map(day => (
                     <DayCheckbox
                       key={day.value}
+                      type="button" // ← ESSENCIAL!
                       $selected={repeatDays.includes(day.value)}
-                      onClick={() => toggleRepeatDay(day.value)}
+                      onClick={(e: React.MouseEvent) => {
+                        e.preventDefault(); // ← Previene comportamento padrão do botão
+                        e.stopPropagation(); // ← Previene propagação para o overlay
+                        toggleRepeatDay(day.value);
+                      }}
                       title={day.label}
                     >
                       {day.short}
@@ -419,7 +424,7 @@ export default function QuickActivityModal({
           {/* Seção 2: Informações Básicas */}
           <Section>
             <SectionTitle>Informações Básicas</SectionTitle>
-            
+
             <Grid2Col>
               <InputGroup>
                 <Label htmlFor="title">Título *</Label>
@@ -456,9 +461,9 @@ export default function QuickActivityModal({
                   min="1"
                   max="240"
                   value={formData.estimatedTime}
-                  onChange={e => setFormData(prev => ({ 
-                    ...prev, 
-                    estimatedTime: parseInt(e.target.value) || 15 
+                  onChange={e => setFormData(prev => ({
+                    ...prev,
+                    estimatedTime: parseInt(e.target.value) || 15
                   }))}
                 />
               </InputGroup>
@@ -473,9 +478,9 @@ export default function QuickActivityModal({
                   min="0"
                   max="1000"
                   value={formData.points}
-                  onChange={e => setFormData(prev => ({ 
-                    ...prev, 
-                    points: parseInt(e.target.value) || 10 
+                  onChange={e => setFormData(prev => ({
+                    ...prev,
+                    points: parseInt(e.target.value) || 10
                   }))}
                 />
               </InputGroup>
@@ -483,13 +488,13 @@ export default function QuickActivityModal({
               <InputGroup>
                 <Label>Tipo</Label>
                 <ToggleGroup>
-                  <ToggleOption 
+                  <ToggleOption
                     $active={formData.isRequired}
                     onClick={() => setFormData(prev => ({ ...prev, isRequired: true }))}
                   >
                     <FaStar size={12} /> Obrigatória
                   </ToggleOption>
-                  <ToggleOption 
+                  <ToggleOption
                     $active={!formData.isRequired}
                     onClick={() => setFormData(prev => ({ ...prev, isRequired: false }))}
                   >
@@ -552,7 +557,7 @@ export default function QuickActivityModal({
                       required
                     />
                     {formData.checklistItems.length > 1 && (
-                      <RemoveButton 
+                      <RemoveButton
                         type="button"
                         onClick={() => removeChecklistItem(index)}
                       >
@@ -575,7 +580,7 @@ export default function QuickActivityModal({
                     <QuizQuestionHeader>
                       <span>Pergunta {qIndex + 1}</span>
                       {formData.quizQuestions.length > 1 && (
-                        <RemoveButton 
+                        <RemoveButton
                           type="button"
                           onClick={() => {
                             const newQuestions = formData.quizQuestions.filter((_, i) => i !== qIndex);
@@ -586,7 +591,7 @@ export default function QuickActivityModal({
                         </RemoveButton>
                       )}
                     </QuizQuestionHeader>
-                    
+
                     <Input
                       type="text"
                       value={question.question}
@@ -594,7 +599,7 @@ export default function QuickActivityModal({
                       placeholder="Digite a pergunta..."
                       style={{ marginBottom: '12px' }}
                     />
-                    
+
                     <Label>Opções de Resposta</Label>
                     {question.options.map((option, oIndex) => (
                       <OptionRow key={oIndex}>
@@ -616,7 +621,7 @@ export default function QuickActivityModal({
                         />
                       </OptionRow>
                     ))}
-                    
+
                     <Input
                       type="text"
                       value={question.explanation}
@@ -635,7 +640,7 @@ export default function QuickActivityModal({
             {selectedType === 'file' && (
               <InputGroup>
                 <Label>Arquivo para Download *</Label>
-                <FileUploadArea 
+                <FileUploadArea
                   onClick={() => fileInputRef.current?.click()}
                   $hasFile={!!formData.file || !!initialData?.fileUrl}
                 >
