@@ -16,7 +16,7 @@ interface ProfessionalLayoutProps {
 export default function ProfessionalLayout({ children }: ProfessionalLayoutProps) {
   const { user, loading, isProfessional } = useAuth();
   const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   const toggleSidebar = () => {
