@@ -18,20 +18,18 @@ import { usePathname } from 'next/navigation';
 import { Student } from '@/types';
 
 interface StudentSidebarProps {
-  open?: boolean;
+  open: boolean;
   student: Student;
+  onNavigate?: () => void;
 }
 
-export default function StudentSidebar({ open = true, student }: StudentSidebarProps) {
+export default function StudentSidebar({ open, student, onNavigate }: StudentSidebarProps) {
   const pathname = usePathname();
 
   const menuItems = [
     { icon: FaHome, label: 'Dashboard', href: '/student/dashboard' },
-    { icon: FaBook, label: 'Meus Programas', href: '/student/programs' },
-    { icon: FaFire, label: 'Hábitos Diários', href: '/student/habits' },
     { icon: FaCalendarAlt, label: 'Cronogramas', href: '/student/schedules' }, // ← NOVO ITEM
     { icon: FaCalendar, label: 'Calendário', href: '/student/calendar' },
-    { icon: FaTrophy, label: 'Conquistas', href: '/student/achievements' },
     { icon: FaChartLine, label: 'Meu Progresso', href: '/student/progress' },
   ];
 
@@ -83,7 +81,7 @@ export default function StudentSidebar({ open = true, student }: StudentSidebarP
         {/* Main Menu */}
         <Menu>
           {menuItems.map((item, index) => (
-            <MenuItem key={index}>
+            <MenuItem key={index} onClick={onNavigate}>
               <PageLink href={item.href} active={isActive(item.href)}>
                 <item.icon size={18} />
                 <span>{item.label}</span>
@@ -116,16 +114,36 @@ export default function StudentSidebar({ open = true, student }: StudentSidebarP
 const Container = styled.nav<{ open: boolean }>`
   background: linear-gradient(180deg, #6d28d9 0%, #4c1d95 100%);
   width: 280px;
-  height: 100%;
+  height: 100vh;
   padding: 24px 0;
   display: flex;
   flex-direction: column;
-  transition: transform 0.35s ease;
-  box-shadow: 3px 0 18px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 2px 0 20px rgba(0, 0, 0, 0.15);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  overflow-y: auto;
+  overflow-x: hidden;
 
   ${props => !props.open && `
     transform: translateX(-100%);
   `}
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+  }
 `;
 
 // Wrapper mais organizado
@@ -282,7 +300,7 @@ const MenuItem = styled.li`
   }
 `;
 
-const PageLink = styled(Link)<{ active: boolean }>`
+const PageLink = styled(Link) <{ active: boolean }>`
   padding: 12px 18px;
   display: flex;
   align-items: center;

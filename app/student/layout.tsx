@@ -16,7 +16,7 @@ interface StudentLayoutProps {
 export default function StudentLayout({ children }: StudentLayoutProps) {
   const { student, loading, isStudent } = useAuth();
   const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   const toggleSidebar = () => {
@@ -53,7 +53,7 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
     <Container>
       <StudentNavbar toggle={toggleSidebar} student={student} />
       <Content>
-        <StudentSidebar open={sidebarOpen} student={student} />
+        <StudentSidebar open={sidebarOpen} student={student} onNavigate={() => setSidebarOpen(false)}/>
         <MainContent open={sidebarOpen}>
           {children}
         </MainContent>
