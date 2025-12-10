@@ -153,11 +153,6 @@ export default function QuickActivityModal({
       return;
     }
 
-    if (selectedType === 'text' && !formData.content.trim()) {
-      alert('Por favor, informe o conteúdo da atividade');
-      return;
-    }
-
     if (selectedType === 'video' && !formData.videoUrl.trim()) {
       alert('Por favor, informe a URL do vídeo');
       return;
@@ -457,7 +452,7 @@ export default function QuickActivityModal({
                 </Label>
                 <NumberInput
                   id="estimatedTime"
-                  type="number"
+                  type="tel"
                   min="1"
                   max="240"
                   value={formData.estimatedTime}
@@ -524,7 +519,6 @@ export default function QuickActivityModal({
                   onChange={e => setFormData(prev => ({ ...prev, content: e.target.value }))}
                   placeholder="Digite o conteúdo da atividade..."
                   rows={6}
-                  required
                 />
               </InputGroup>
             )}
