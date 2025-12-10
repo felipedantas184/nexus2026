@@ -1,10 +1,10 @@
 'use client';
 
-import { 
-  FaHome, 
-  FaUsers, 
-  FaBook, 
-  FaChartLine, 
+import {
+  FaHome,
+  FaUsers,
+  FaBook,
+  FaChartLine,
   FaStickyNote,
   FaCog,
   FaUserPlus,
@@ -14,7 +14,7 @@ import {
   FaChevronDown,
   FaChevronRight
 } from 'react-icons/fa';
-import { 
+import {
   FaUserDoctor,
   FaClipboardList,
 } from 'react-icons/fa6';
@@ -25,77 +25,56 @@ import { useState } from 'react';
 import { Professional } from '@/types';
 
 interface ProfessionalSidebarProps {
-  open?: boolean;
+  open: boolean;
   user: Professional;
+  onNavigate?: () => void;
 }
 
-export default function ProfessionalSidebar({ open = true, user }: ProfessionalSidebarProps) {
+export default function ProfessionalSidebar({ open, user, onNavigate }: ProfessionalSidebarProps) {
   const pathname = usePathname();
-  const [expandedMenu, setExpandedMenu] = useState<string | null>(null);
-
   const menuItems = [
-    { 
-      icon: FaHome, 
-      label: 'Dashboard', 
+    {
+      icon: FaHome,
+      label: 'Dashboard',
       href: '/professional/dashboard',
       badge: null
     },
-    { 
-      icon: FaUsers, 
-      label: 'Alunos', 
+    {
+      icon: FaUsers,
+      label: 'Alunos',
       href: '/professional/students',
       badge: user.assignedStudents.length,
-      submenu: [
-        { label: 'Todos Alunos', href: '/professional/students' },
-        { label: 'Cadastrar Novo', href: '/professional/students/register', highlight: true },
-        { label: 'Atividades Pendentes', href: '/professional/students/pending', badge: '3' },
-        { label: 'Alunos Prioritários', href: '/professional/students/priority', badge: '!' },
-      ]
     },
-    { 
-      icon: FaBook, 
-      label: 'Programas', 
+    {
+      icon: FaBook,
+      label: 'Programas',
       href: '/professional/programs',
       badge: null,
-      submenu: [
-        { label: 'Meus Programas', href: '/professional/programs' },
-        { label: 'Criar Programa', href: '/professional/programs/create', highlight: true },
-        { label: 'Modelos', href: '/professional/programs/templates' },
-      ]
     },
-    { 
-      icon: FaCalendarAlt, 
-      label: 'Cronogramas', 
+    {
+      icon: FaCalendarAlt,
+      label: 'Cronogramas',
       href: '/professional/schedules',
       badge: null
     },
-    { 
-      icon: FaChartLine, 
-      label: 'Relatórios', 
+    {
+      icon: FaChartLine,
+      label: 'Relatórios',
       href: '/professional/reports',
       badge: null
     },
-    { 
-      icon: FaStickyNote, 
-      label: 'Observações', 
+    {
+      icon: FaStickyNote,
+      label: 'Observações',
       href: '/professional/observations',
       badge: null
     },
   ];
 
   const isActive = (href: string) => {
-    if (href === '/professional/dashboard') {
-      return pathname === href;
-    }
-    return pathname === href || pathname.startsWith(href + '/');
-  };
+    if (pathname === href) return true;
 
-  const toggleSubmenu = (label: string) => {
-    if (expandedMenu === label) {
-      setExpandedMenu(null);
-    } else {
-      setExpandedMenu(label);
-    }
+    return false
   };
 
   const getUserInitials = () => {
@@ -105,7 +84,7 @@ export default function ProfessionalSidebar({ open = true, user }: ProfessionalS
   };
 
   const getRoleLabel = () => {
-    switch(user.role) {
+    switch (user.role) {
       case 'psychologist': return 'Psicólogo';
       case 'psychiatrist': return 'Psiquiatra';
       case 'monitor': return 'Monitor';
@@ -148,34 +127,21 @@ export default function ProfessionalSidebar({ open = true, user }: ProfessionalS
         <Menu>
           {menuItems.map((item, index) => {
             const active = isActive(item.href);
-            const hasSubmenu = item.submenu;
-            const isExpanded = expandedMenu === item.label;
-            
+
             return (
               <MenuItem key={index}>
-                {hasSubmenu ? (
-                  <>
-                    <MenuButton 
-                      onClick={() => toggleSubmenu(item.label)}
-                      $active={active || isExpanded}
-                    >
-                      <MenuIcon $active={active}>
-                        <item.icon size={18} />
-                      </MenuIcon>
-                      <MenuLabel>{item.label}</MenuLabel>
-                    </MenuButton>
-                    
-                    
-                  </>
-                ) : (
-                  <MenuLink href={item.href} $active={active}>
+                
+                  <MenuLink
+                    href={item.href}
+                    $active={active}
+                    onClick={onNavigate}
+                  >
                     <MenuIcon $active={active}>
                       <item.icon size={18} />
                     </MenuIcon>
                     <MenuLabel>{item.label}</MenuLabel>
 
                   </MenuLink>
-                )}
               </MenuItem>
             );
           })}
@@ -204,7 +170,7 @@ export default function ProfessionalSidebar({ open = true, user }: ProfessionalS
             <FaCog size={16} />
             <span>Configurações</span>
           </SettingsLink>
-          
+
           <LogoutButton>
             <FaSignOutAlt size={16} />
             <span>Sair</span>
@@ -405,7 +371,7 @@ const MenuItem = styled.li`
   }
 `;
 
-const MenuLink = styled(Link)<{ $active: boolean }>`
+const MenuLink = styled(Link) <{ $active: boolean }>`
   padding: 16px 20px;
   display: flex;
   align-items: center;
@@ -523,7 +489,7 @@ const SubmenuItem = styled.div`
   }
 `;
 
-const SubmenuLink = styled(Link)<{ $highlight?: boolean }>`
+const SubmenuLink = styled(Link) <{ $highlight?: boolean }>`
   display: flex;
   align-items: center;
   gap: 12px;
@@ -629,7 +595,7 @@ const BottomSection = styled.div`
   animation: ${fadeIn} 0.4s ease-out 0.4s both;
 `;
 
-const SettingsLink = styled(Link)<{ $active: boolean }>`
+const SettingsLink = styled(Link) <{ $active: boolean }>`
   display: flex;
   align-items: center;
   gap: 12px;

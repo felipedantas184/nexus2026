@@ -385,12 +385,12 @@ export default function StudentRegister() {
               <ProgressLine $active={step >= 2} />
               <ProgressStep $active={step >= 2}>
                 <StepNumber>2</StepNumber>
-                <StepLabel>Informações Escolares</StepLabel>
+                <StepLabel>Dados Escolares</StepLabel>
               </ProgressStep>
               <ProgressLine $active={step >= 3} />
               <ProgressStep $active={step >= 3}>
                 <StepNumber>3</StepNumber>
-                <StepLabel>Segurança</StepLabel>
+                <StepLabel>Segurança & Senha</StepLabel>
               </ProgressStep>
             </ProgressIndicator>
             
@@ -526,7 +526,7 @@ export default function StudentRegister() {
                 </InputGroup>
 
                 <NextStepButton type="button" onClick={nextStep} disabled={loading}>
-                  <span>Próximo: Informações Escolares</span>
+                  <span>Informações Escolares</span>
                   <FaArrowRight size={16} />
                 </NextStepButton>
               </StepContent>
@@ -589,6 +589,7 @@ export default function StudentRegister() {
                   </Select>
                 </InputGroup>
 
+                {/**
                 <HelpCard>
                   <HelpIcon>
                     <FaChild size={20} color="#f59e0b" />
@@ -600,7 +601,7 @@ export default function StudentRegister() {
                       Você será responsável pelo acompanhamento do progresso do aluno.
                     </HelpText>
                   </HelpContent>
-                </HelpCard>
+                </HelpCard> */}
 
                 <ActionButtons>
                   <BackButton type="button" onClick={prevStep} disabled={loading}>
@@ -771,10 +772,6 @@ export default function StudentRegister() {
               <SupportLink href="mailto:aluno@nexus.com">
                 aluno@nexus.com
               </SupportLink>
-              <SupportText>Para responsáveis:</SupportText>
-              <SupportLink href="mailto:responsaveis@nexus.com">
-                responsaveis@nexus.com
-              </SupportLink>
             </SupportSection>
           </CardFooter>
         </RegisterCard>
@@ -790,12 +787,17 @@ const Container = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 16px; /* Reduzido de 20px */
   position: relative;
   overflow: hidden;
 
   @media (max-width: 768px) {
-    padding: 16px;
+    padding: 12px; /* Mais compacto no mobile */
+    align-items: flex-start; /* Evita overflow vertical */
+  }
+  
+  @media (max-width: 480px) {
+    padding: 8px; /* Mínimo padding para mobile pequeno */
   }
 `;
 
@@ -837,10 +839,19 @@ const RegisterWrapper = styled.div`
   position: relative;
   z-index: 1;
   animation: ${fadeInUp} 0.6s ease-out;
-
+  
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
     max-width: 500px;
+  }
+  
+  @media (max-width: 480px) {
+    max-width: 100%; /* Ocupa toda largura */
+    border-radius: 16px; /* Bordas menores */
+  }
+  
+  @media (max-width: 360px) {
+    border-radius: 12px; /* Mobile muito pequeno */
   }
 `;
 
@@ -1018,12 +1029,20 @@ const RegisterCard = styled.div`
   display: flex;
   flex-direction: column;
   
+  @media (max-width: 1024px) {
+    padding: 40px 32px; /* Reduzido de 48px */
+  }
+  
   @media (max-width: 768px) {
-    padding: 40px 24px;
+    padding: 32px 24px; /* Mais compacto */
   }
   
   @media (max-width: 480px) {
-    padding: 32px 20px;
+    padding: 24px 16px; /* Mínimo para mobile */
+  }
+  
+  @media (max-width: 360px) {
+    padding: 20px 12px; /* Mobile muito pequeno */
   }
 `;
 
@@ -1036,7 +1055,47 @@ const ProgressIndicator = styled.div`
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-bottom: 32px;
+  margin-bottom: 24px; /* Reduzido de 32px */
+  
+  @media (max-width: 480px) {
+    gap: 4px; /* Menor espaçamento */
+    margin-bottom: 20px;
+  }
+`;
+
+const StepLabel = styled.div`
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-align: center;
+  white-space: nowrap;
+  
+  @media (max-width: 480px) {
+    font-size: 10px; /* Texto menor */
+    white-space: normal; /* Permite quebra de linha */
+    word-break: break-word;
+    max-width: 60px; /* Limita largura */
+  }
+  
+  @media (max-width: 360px) {
+    font-size: 9px;
+    max-width: 50px;
+  }
+`;
+
+const ProgressLine = styled.div<{ $active: boolean }>`
+  width: 30px;
+  height: 2px;
+  background: ${props => props.$active ? '#8b5cf6' : '#e5e7eb'};
+  transition: all 0.3s ease;
+  
+  @media (max-width: 480px) {
+    width: 20px; /* Linhas mais curtas */
+  }
+  
+  @media (max-width: 360px) {
+    width: 15px;
+  }
 `;
 
 const ProgressStep = styled.div<{ $active: boolean }>`
@@ -1059,21 +1118,6 @@ const StepNumber = styled.div`
   justify-content: center;
   font-weight: 700;
   font-size: 14px;
-`;
-
-const StepLabel = styled.div`
-  font-size: 11px;
-  font-weight: 600;
-  color: #6b7280;
-  text-align: center;
-  white-space: nowrap;
-`;
-
-const ProgressLine = styled.div<{ $active: boolean }>`
-  width: 30px;
-  height: 2px;
-  background: ${props => props.$active ? '#8b5cf6' : '#e5e7eb'};
-  transition: all 0.3s ease;
 `;
 
 const CardLogo = styled.div`
@@ -1110,8 +1154,12 @@ const CardSubtitle = styled.p`
 const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 28px;
-  margin-bottom: 32px;
+  gap: 24px; /* Reduzido de 28px */
+  margin-bottom: 24px; /* Reduzido de 32px */
+  
+  @media (max-width: 480px) {
+    gap: 20px; /* Menor espaçamento no mobile */
+  }
 `;
 
 const ErrorMessage = styled.div`
@@ -1184,9 +1232,9 @@ const LabelHint = styled.div`
 `;
 
 const Input = styled.input<{ $hasError: boolean }>`
-  padding: 18px 16px;
+  padding: 16px 14px; /* Reduzido de 18px 16px */
   border: 2px solid ${props => props.$hasError ? '#f87171' : '#e2e8f0'};
-  border-radius: 14px;
+  border-radius: 12px; /* Reduzido de 14px */
   font-size: 16px;
   transition: all 0.3s ease;
   width: 100%;
@@ -1209,6 +1257,11 @@ const Input = styled.input<{ $hasError: boolean }>`
   &::placeholder {
     color: #9ca3af;
   }
+  
+  @media (max-width: 480px) {
+    padding: 14px 12px; /* Menor padding no mobile */
+    font-size: 15px; /* Texto ligeiramente menor */
+  }
 `;
 
 const InputHint = styled.div`
@@ -1229,9 +1282,9 @@ const TwoColumnGrid = styled.div`
 `;
 
 const Select = styled.select<{ $hasError: boolean }>`
-  padding: 18px 16px;
+  padding: 16px 14px; /* Reduzido de 18px 16px */
   border: 2px solid ${props => props.$hasError ? '#f87171' : '#e2e8f0'};
-  border-radius: 14px;
+  border-radius: 12px; /* Reduzido de 14px */
   font-size: 16px;
   transition: all 0.3s ease;
   width: 100%;
@@ -1251,14 +1304,19 @@ const Select = styled.select<{ $hasError: boolean }>`
     cursor: not-allowed;
     opacity: 0.7;
   }
+  
+  @media (max-width: 480px) {
+    padding: 14px 12px; /* Menor padding no mobile */
+    font-size: 15px;
+  }
 `;
 
 const NextStepButton = styled.button`
   background: linear-gradient(135deg, #8b5cf6, #7c3aed);
   border: none;
   color: white;
-  border-radius: 14px;
-  padding: 20px 28px;
+  border-radius: 12px; /* Reduzido de 14px */
+  padding: 18px 24px; /* Reduzido de 20px 28px */
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
@@ -1266,8 +1324,7 @@ const NextStepButton = styled.button`
   align-items: center;
   justify-content: space-between;
   transition: all 0.3s ease;
-  margin-top: 12px;
-  animation: ${pulse} 2s ease-in-out infinite;
+  margin-top: 8px; /* Reduzido de 12px */
   
   &:hover:not(:disabled) {
     transform: translateY(-3px);
@@ -1278,6 +1335,39 @@ const NextStepButton = styled.button`
     background: #cbd5e1;
     cursor: not-allowed;
     animation: none;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 16px 20px;
+    font-size: 15px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 14px 16px; /* Menor no mobile */
+    font-size: 14px;
+    flex-direction: row; /* Stack vertical */
+    gap: 16px;
+    text-align: center;
+    justify-content: center;
+    
+    span {
+      order: 1; /* Texto primeiro */
+    }
+    
+    svg {
+      order: 2; /* Ícone depois */
+    }
+  }
+`;
+
+const ActionButtons = styled.div`
+  display: flex;
+  gap: 12px; /* Reduzido de 16px */
+  margin-top: 20px; /* Reduzido de 24px */
+  
+  @media (max-width: 480px) {
+    flex-direction: column; /* Stack vertical no mobile */
+    gap: 8px;
   }
 `;
 
@@ -1312,18 +1402,12 @@ const HelpText = styled.div`
   line-height: 1.5;
 `;
 
-const ActionButtons = styled.div`
-  display: flex;
-  gap: 16px;
-  margin-top: 24px;
-`;
-
 const BackButton = styled.button<{ disabled: boolean }>`
   background: white;
   border: 2px solid #e5e7eb;
   color: #6b7280;
-  border-radius: 14px;
-  padding: 18px 24px;
+  border-radius: 12px; /* Reduzido de 14px */
+  padding: 16px 20px; /* Reduzido de 18px 24px */
   font-size: 15px;
   font-weight: 600;
   cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
@@ -1343,14 +1427,20 @@ const BackButton = styled.button<{ disabled: boolean }>`
   svg {
     transform: rotate(180deg);
   }
+  
+  @media (max-width: 480px) {
+    padding: 14px 16px;
+    font-size: 14px;
+    justify-content: center; /* Centraliza no mobile */
+  }
 `;
 
 const RegisterButton = styled.button<{ disabled: boolean; $loading: boolean }>`
   background: ${props => props.disabled || props.$loading ? '#cbd5e1' : 'linear-gradient(135deg, #8b5cf6, #7c3aed)'};
   border: none;
   color: white;
-  border-radius: 14px;
-  padding: 18px 28px;
+  border-radius: 12px; /* Reduzido de 14px */
+  padding: 16px 20px; /* Reduzido de 18px 28px */
   font-size: 16px;
   font-weight: 700;
   cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
@@ -1362,7 +1452,6 @@ const RegisterButton = styled.button<{ disabled: boolean; $loading: boolean }>`
   flex: 2;
   position: relative;
   overflow: hidden;
-  animation: ${props => !props.disabled && !props.$loading ? pulse : 'none'} 2s ease-in-out infinite;
   
   &:hover:not(:disabled) {
     transform: translateY(-3px);
@@ -1397,6 +1486,18 @@ const RegisterButton = styled.button<{ disabled: boolean; $loading: boolean }>`
   
   &:hover:not(:disabled)::before {
     opacity: 1;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 16px 20px;
+    font-size: 15px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 14px 16px; /* Menor no mobile */
+    font-size: 14px;
+    flex: 1; /* Ocupa largura total no stack vertical */
+    justify-content: center;
   }
 `;
 

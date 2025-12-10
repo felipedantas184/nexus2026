@@ -56,7 +56,11 @@ export default function ProfessionalLayout({ children }: ProfessionalLayoutProps
     <Container>
       <ProfessionalNavbar toggle={toggleSidebar} user={professionalUser} />
       <Content>
-        <ProfessionalSidebar open={sidebarOpen} user={professionalUser} />
+        <ProfessionalSidebar
+          open={sidebarOpen}
+          user={professionalUser}
+          onNavigate={() => setSidebarOpen(false)}
+        />
         <MainContent open={sidebarOpen}>
           {children}
         </MainContent>

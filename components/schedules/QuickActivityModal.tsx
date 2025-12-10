@@ -101,7 +101,7 @@ export default function QuickActivityModal({
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    estimatedTime: 15,
+    estimatedTime: 60,
     points: 10,
     isRequired: true,
     content: '',
@@ -249,7 +249,7 @@ export default function QuickActivityModal({
     setFormData({
       title: '',
       description: '',
-      estimatedTime: 15,
+      estimatedTime: 60,
       points: 10,
       isRequired: true,
       content: '',
@@ -360,7 +360,7 @@ export default function QuickActivityModal({
   if (!isOpen) return null;
 
   return (
-    <ModalOverlay onClick={handleClose}>
+    <ModalOverlay onClick={e => e.stopPropagation()}>
       <ModalContent onClick={e => e.stopPropagation()}>
         <ModalHeader>
           <ModalTitle>

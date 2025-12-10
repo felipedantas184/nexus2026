@@ -305,7 +305,7 @@ export default function StudentLogin() {
               ) : (
                 <>
                   <FaGamepad size={20} />
-                  <span>Começar Minha Jornada</span>
+                  <span>Começar Jornada</span>
                   <FaChevronRight size={16} />
                 </>
               )}
