@@ -455,7 +455,7 @@ export default function StudentDashboard() {
             </StatIcon>
             <StatInfo>
               <StatValue>{dashboardStats.currentStreak}</StatValue>
-              <StatLabel>Dias Consecutivos</StatLabel>
+              <StatLabel>Dias Seguidos</StatLabel>
             </StatInfo>
           </StatCard>
 
@@ -541,9 +541,27 @@ export default function StudentDashboard() {
                     $scheduleColor={activity.scheduleColor}
                   >
                     <CardHeader>
-                      <ActivityIconWrapper $type={activity.type} $completed={activity.completed}>
-                        {getActivityIcon(activity.type)}
-                      </ActivityIconWrapper>
+                      <HeaderLeft>
+                        <ActivityIconWrapper $type={activity.type} $completed={activity.completed}>
+                          {getActivityIcon(activity.type)}
+                        </ActivityIconWrapper>
+
+                        <HeaderInfo>
+                          <ActivityTitleRow>
+                            <ActivityTitle>
+                              {activity.activity.title}
+                            </ActivityTitle>
+
+                            {activity.activity.isRequired && (
+                              <RequiredDot title="Atividade obrigatória" />
+                            )}
+                          </ActivityTitleRow>
+
+                          <ScheduleBadge $color={activity.scheduleColor}>
+                            {activity.scheduleTitle}
+                          </ScheduleBadge>
+                        </HeaderInfo>
+                      </HeaderLeft>
 
                       <DashboardActivityToggle
                         activity={activity}
@@ -551,36 +569,10 @@ export default function StudentDashboard() {
                       />
                     </CardHeader>
 
-                    <ActivityContent>
-                      <ActivityTitleRow>
-                        <ActivityTitle>
-                          {activity.activity.title}
-                          {activity.activity.isRequired && <RequiredIndicator title="Atividade obrigatória">•</RequiredIndicator>}
-                        </ActivityTitle>
-                      </ActivityTitleRow>
-
-                      {activity.activity.description && (
-                        <ActivityDescription>
-                          {activity.activity.description}
-                        </ActivityDescription>
-                      )}
-
-                      <ActivityMeta>
-                        <MetaItem>
-                          <FaClock size={10} />
-                          <span>{activity.estimatedTime}min</span>
-                        </MetaItem>
-
-                        <MetaItem>
-                          <FaStar size={10} />
-                          <span>{activity.points}pts</span>
-                        </MetaItem>
-
-                        <ScheduleBadge $color={activity.scheduleColor}>
-                          {activity.scheduleTitle}
-                        </ScheduleBadge>
-                      </ActivityMeta>
-                    </ActivityContent>
+                    <ActivityMeta>
+                      <MetaItem><FaClock size={10} /> {activity.estimatedTime}min</MetaItem>
+                      <MetaItem><FaStar size={10} /> {activity.points}pts</MetaItem>
+                    </ActivityMeta>
 
                     <CardFooter>
                       <ActionButtons>
@@ -589,34 +581,18 @@ export default function StudentDashboard() {
                           $type={activity.type}
                         >
                           <FaPlay size={12} />
-                          Ver Detalhes
+                          Abrir
                         </DetailButton>
-
-                        {activity.activity.instructions && (
-                          <InstructionsButton
-                            onClick={() => alert(activity.activity.instructions)}
-                            title="Ver instruções"
-                          >
-                            <FaQuestionCircle size={12} />
-                          </InstructionsButton>
-                        )}
                       </ActionButtons>
-
-                      <CompletionStatus $completed={activity.completed}>
-                        {activity.completed ? (
-                          <>
-                            <FaCheck size={10} />
-                            <span>Concluída</span>
-                          </>
-                        ) : (
-                          <>
-                            <FaClock size={10} />
-                            <span>Clique no círculo para marcar</span>
-                          </>
-                        )}
-                      </CompletionStatus>
+                      {activity.completed && (
+                        <CompletionStatus $completed={activity.completed}>
+                          <FaCheck size={11} />
+                          Concluída
+                        </CompletionStatus>
+                      )}
                     </CardFooter>
                   </ActivityCardWrapper>
+
                 ))}
               </ActivitiesGrid>
 
@@ -757,33 +733,936 @@ export default function StudentDashboard() {
 }
 
 // ========== ESTILOS ATUALIZADOS ==========
+// ========== ESTILOS ATUALIZADOS COM RESPONSIVIDADE ==========
 const Container = styled.div`
-  padding: 24px;
+  padding: 16px;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   min-height: 100vh;
+
+  @media (max-width: 480px) {
+    padding: 12px;
+  }
 `;
 
 const WelcomeBanner = styled.div`
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  border-radius: 20px;
-  padding: 32px;
-  margin-bottom: 32px;
+  border-radius: 16px;
+  padding: 24px 20px;
+  margin-bottom: 24px;
   color: white;
   box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
   position: relative;
   overflow: hidden;
 
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 200px;
-    height: 200px;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-    border-radius: 50%;
+  @media (max-width: 768px) {
+    padding: 20px 16px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 480px) {
+    padding: 16px 12px;
+    border-radius: 12px;
   }
 `;
+
+const WelcomeTitle = styled.h1`
+  font-size: 28px;
+  font-weight: 800;
+  margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  @media (max-width: 768px) {
+    font-size: 24px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 22px;
+    gap: 8px;
+  }
+`;
+
+const WelcomeSubtitle = styled.p`
+  font-size: 16px;
+  margin: 0;
+  opacity: 0.9;
+  font-weight: 500;
+
+  @media (max-width: 480px) {
+    font-size: 14px;
+  }
+`;
+
+const DateDisplay = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  opacity: 0.9;
+  font-weight: 500;
+
+  @media (max-width: 480px) {
+    font-size: 12px;
+    gap: 6px;
+  }
+`;
+
+const StatsOverview = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 480px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+`;
+
+const StatCard = styled.div<{ $color: string; $gradient?: boolean }>`
+  background: ${props => props.$gradient
+    ? `linear-gradient(135deg, ${props.$color}dd, ${props.$color}aa)`
+    : 'rgba(255, 255, 255, 0.95)'};
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 16px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  cursor: pointer;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  }
+
+  @media (max-width: 480px) {
+    padding: 12px 10px;
+    gap: 10px;
+    min-height: 72px;
+  }
+`;
+
+const StatIcon = styled.div<{ $color: string }>`
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  backdrop-filter: blur(10px);
+  flex-shrink: 0;
+
+  @media (max-width: 480px) {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+    border-radius: 10px;
+  }
+`;
+
+const StatInfo = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const StatValue = styled.div`
+  font-size: 24px;
+  font-weight: 800;
+  color: white;
+  margin-bottom: 4px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  @media (max-width: 768px) {
+    font-size: 22px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 20px;
+  }
+`;
+
+const StatLabel = styled.div`
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  @media (max-width: 480px) {
+    font-size: 12px;
+  }
+`;
+
+const ContentGrid = styled.div`
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: 1.5fr 1fr;
+    gap: 20px;
+  }
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+`;
+
+const MainSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+`;
+
+const Sidebar = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  
+  @media (max-width: 768px) {
+    gap: 16px;
+  }
+`;
+
+const SectionHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  
+  @media (max-width: 480px) {
+    margin-bottom: 10px;
+  }
+`;
+
+const SectionTitle = styled.h2`
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  @media (max-width: 768px) {
+    font-size: 17px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 16px;
+    gap: 6px;
+  }
+`;
+
+const SectionBadge = styled.span`
+  background: #6366f1;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 700;
+
+  @media (max-width: 480px) {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+`;
+
+const EmptyStateCard = styled.div`
+  background: white;
+  border-radius: 16px;
+  padding: 40px 24px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  border: 2px dashed #e2e8f0;
+
+  @media (max-width: 768px) {
+    padding: 32px 20px;
+  }
+
+  @media (max-width: 480px) {
+    padding: 24px 16px;
+    border-radius: 14px;
+  }
+`;
+
+const EmptyIcon = styled.div`
+  color: #94a3b8;
+  margin-bottom: 16px;
+
+  @media (max-width: 480px) {
+    margin-bottom: 12px;
+  }
+`;
+
+const EmptyTitle = styled.h3`
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 10px 0;
+
+  @media (max-width: 768px) {
+    font-size: 20px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+`;
+
+const EmptyDescription = styled.p`
+  color: #64748b;
+  font-size: 15px;
+  margin: 0 0 24px 0;
+  line-height: 1.5;
+
+  @media (max-width: 768px) {
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 13px;
+    margin-bottom: 16px;
+    line-height: 1.4;
+  }
+`;
+
+const TodayProgressCard = styled.div`
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+
+  @media (max-width: 480px) {
+    padding: 16px;
+    border-radius: 14px;
+  }
+`;
+
+const ProgressHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  @media (max-width: 480px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+`;
+
+const ProgressLabel = styled.span`
+  font-size: 15px;
+  font-weight: 600;
+  color: #64748b;
+
+  @media (max-width: 480px) {
+    font-size: 14px;
+  }
+`;
+
+const ProgressValue = styled.span`
+  font-size: 28px;
+  font-weight: 800;
+  color: #0f172a;
+
+  @media (max-width: 768px) {
+    font-size: 26px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 24px;
+  }
+`;
+
+const ProgressTime = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+
+  @media (max-width: 480px) {
+    font-size: 12px;
+    align-self: flex-end;
+  }
+`;
+
+const ProgressBar = styled.div<{ $small?: boolean }>`
+  width: 100%;
+  height: ${props => props.$small ? '5px' : '10px'};
+  background: #f1f5f9;
+  border-radius: ${props => props.$small ? '3px' : '5px'};
+  overflow: hidden;
+`;
+
+const ActivitiesGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 16px;
+
+  @media (max-width: 1024px) {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 14px;
+  }
+
+  @media (max-width: 768px) {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px;
+  }
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+`;
+
+const ActivityCardWrapper = styled.div<{
+  $type: string;
+  $completed: boolean;
+  $scheduleColor: string;
+}>`
+  background: ${p => (p.$completed ? "#f9fef9" : "white")};
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    transform: translateY(-2px);
+  }
+`;
+
+const CardHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+`;
+
+const HeaderLeft = styled.div`
+  display: flex;
+  gap: 12px;
+`;
+
+const HeaderInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+`;
+
+const ActivityIconWrapper = styled.div<{ $type: string; $completed: boolean }>`
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  background: ${props => {
+    if (props.$completed) return '#10b98120';
+        switch (props.$type) {
+      case 'text':
+        return '#6366f120'; // Indigo Claro
+      case 'quiz':
+        return '#f59e0b20'; // Amarelo/Âmbar Claro
+      case 'video':
+        return '#ef444420'; // Vermelho Claro
+      case 'checklist':
+        return '#10b98120'; // Verde Claro
+      case 'file':
+        return '#8b5cf620'; // Violeta Claro
+      case 'habit':
+        return '#06b6d420'; // Ciano Claro
+      default:
+        return '#6366f120'; // Default: Indigo Claro
+    }
+  }};
+
+  color: ${props => {
+    if (props.$completed) return '#10b981';
+    switch (props.$type) {
+      case 'text':
+        return '#6366f1'; // Indigo
+      case 'quiz':
+        return '#f59e0b'; // Amarelo/Âmbar
+      case 'video':
+        return '#ef4444'; // Vermelho
+      case 'checklist':
+        return '#10b981'; // Verde
+      case 'file':
+        return '#8b5cf6'; // Violeta
+      case 'habit':
+        return '#06b6d4'; // Ciano
+      default:
+        return '#6366f1'; // Default: Indigo
+    }
+  }};
+
+  @media (max-width: 480px) {
+    width: 32px;
+    height: 32px;
+    font-size: 13px;
+  }
+`;
+const RequiredDot = styled.span`
+  width: 6px;
+  height: 6px;
+  background: #ef4444;
+  border-radius: 50%;
+`;
+
+const ActivityTitle = styled.div`
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+`;
+
+const ScheduleBadge = styled.div<{ $color: string }>`
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: ${p => p.$color}1A;
+  color: ${p => p.$color};
+  font-weight: 600;
+  width: fit-content;
+`;
+
+const ActivityMeta = styled.div`
+  display: flex;
+  gap: 10px;
+  color: #64748b;
+`;
+
+const MetaItem = styled.div`
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+`;
+
+const CardFooter = styled.div`
+  border-top: 1px solid #f1f5f9;
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const ActionButtons = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const DetailButton = styled(Link) <{ $type: string }>`
+  flex: 1;
+  background: #6366f1;
+  color: #f1f5f9;
+  font-weight: 600;
+  padding: 8px 10px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+  font-size: 12px;
+  transition: 0.2s;
+
+  &:hover {
+    background: #e2e8f0;
+  }
+`;
+
+const CompletionStatus = styled.div<{ $completed: boolean }>`
+  font-size: 12px;
+  color: ${p => (p.$completed ? "#16a34a" : "#475569")};
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+`;
+
+
+const QuickActions = styled.div`
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  @media (max-width: 480px) {
+    gap: 8px;
+  }
+`;
+
+const ActionButton = styled(Link) <{ $primary?: boolean }>`
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: ${props => props.$primary
+    ? 'linear-gradient(135deg, #6366f1, #4f46e5)'
+    : 'white'};
+  color: ${props => props.$primary ? 'white' : '#6366f1'};
+  text-decoration: none;
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  justify-content: center;
+  border: ${props => props.$primary ? 'none' : '2px solid #e2e8f0'};
+  box-shadow: ${props => props.$primary
+    ? '0 4px 16px rgba(99, 102, 241, 0.25)'
+    : '0 4px 12px rgba(0, 0, 0, 0.05)'};
+  min-height: 48px;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: ${props => props.$primary
+    ? '0 6px 24px rgba(99, 102, 241, 0.3)'
+    : '0 6px 20px rgba(0, 0, 0, 0.08)'};
+  }
+
+  @media (max-width: 768px) {
+    padding: 14px 16px;
+    font-size: 13px;
+    min-height: 44px;
+  }
+
+  @media (max-width: 480px) {
+    padding: 14px 14px;
+    font-size: 12px;
+    min-height: 40px;
+    border-radius: 10px;
+  }
+`;
+
+const SidebarSection = styled.div`
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
+
+  @media (max-width: 480px) {
+    padding: 14px;
+    border-radius: 14px;
+  }
+`;
+
+const ScheduleList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+`;
+
+const ScheduleItem = styled(Link)`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  color: inherit;
+  min-height: 60px;
+
+  &:hover {
+    transform: translateX(4px);
+    border-color: #6366f1;
+    background: #eef2ff;
+  }
+
+  @media (max-width: 480px) {
+    padding: 12px;
+    gap: 8px;
+    min-height: 56px;
+  }
+`;
+
+const ScheduleName = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  @media (max-width: 480px) {
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+`;
+
+const AchievementsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+`;
+
+const AchievementItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 10px;
+  background: #fefce8;
+  border: 1px solid #fde047;
+  min-height: 60px;
+
+  @media (max-width: 480px) {
+    padding: 12px;
+    gap: 8px;
+    min-height: 56px;
+  }
+`;
+
+const AchievementIcon = styled.div`
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f59e0b, #fbbf24);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  @media (max-width: 480px) {
+    width: 32px;
+    height: 32px;
+  }
+`;
+
+const AchievementName = styled.div`
+  font-weight: 600;
+  color: #0f172a;
+  margin-bottom: 2px;
+  font-size: 13px;
+
+  @media (max-width: 480px) {
+    font-size: 12px;
+  }
+`;
+
+const AchievementPoints = styled.div`
+  font-size: 11px;
+  color: #10b981;
+  font-weight: 700;
+
+  @media (max-width: 480px) {
+    font-size: 10px;
+  }
+`;
+
+const TipsSection = styled.div`
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #a7f3d0;
+
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
+
+  @media (max-width: 480px) {
+    padding: 14px;
+    border-radius: 14px;
+  }
+`;
+
+const TipsHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-weight: 700;
+  color: #065f46;
+  font-size: 15px;
+
+  @media (max-width: 480px) {
+    font-size: 14px;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+`;
+
+const TipsContent = styled.p`
+  color: #047857;
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 0;
+  font-style: italic;
+
+  @media (max-width: 480px) {
+    font-size: 12px;
+    line-height: 1.3;
+  }
+`;
+
+const NotificationsSection = styled.div`
+  background: #fef3c7;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #fcd34d;
+
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
+
+  @media (max-width: 480px) {
+    padding: 14px;
+    border-radius: 14px;
+  }
+`;
+
+const NotificationsHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-weight: 700;
+  color: #92400e;
+  font-size: 15px;
+
+  @media (max-width: 480px) {
+    font-size: 14px;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+`;
+
+const NotificationsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const NotificationItem = styled.div`
+  font-size: 13px;
+  color: #92400e;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 6px;
+  line-height: 1.3;
+
+  @media (max-width: 480px) {
+    font-size: 12px;
+    padding: 6px;
+  }
+`;
+
+const EmptySidebarState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 16px;
+  color: #94a3b8;
+  text-align: center;
+
+  svg {
+    opacity: 0.5;
+    font-size: 18px;
+  }
+
+  span {
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  @media (max-width: 480px) {
+    padding: 20px 12px;
+    gap: 6px;
+    
+    svg {
+      font-size: 16px;
+    }
+    
+    span {
+      font-size: 12px;
+    }
+  }
+`;
+
+// Loading states
+const LoadingContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 16px;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  min-height: 100vh;
+
+  @media (max-width: 480px) {
+    padding: 60px 12px;
+  }
+`;
+
+const LoadingText = styled.p`
+  margin-top: 12px;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+
+  @media (max-width: 480px) {
+    font-size: 13px;
+    margin-top: 10px;
+  }
+`;
+
+
+
+
+
+
+
+
+
+
+
 
 const WelcomeContent = styled.div`
   margin-bottom: 32px;
@@ -793,16 +1672,6 @@ const WelcomeContent = styled.div`
 
 const WelcomeHeader = styled.div`
   margin-bottom: 16px;
-`;
-
-const WelcomeTitle = styled.h1`
-  font-size: 36px;
-  font-weight: 800;
-  margin: 0 0 8px 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 `;
 
 const CrownIcon = styled.span`
@@ -815,205 +1684,10 @@ const CrownIcon = styled.span`
   }
 `;
 
-const WelcomeSubtitle = styled.p`
-  font-size: 18px;
-  margin: 0;
-  opacity: 0.9;
-  font-weight: 500;
-`;
-
-const DateDisplay = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  opacity: 0.9;
-  font-weight: 500;
-`;
-
-const StatsOverview = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  position: relative;
-  z-index: 1;
-`;
-
-const StatCard = styled.div<{ $color: string; $gradient?: boolean }>`
-  background: ${props => props.$gradient
-    ? `linear-gradient(135deg, ${props.$color}dd, ${props.$color}aa)`
-    : 'rgba(255, 255, 255, 0.95)'};
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: all 0.3s ease;
-  cursor: pointer;
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
-  }
-`;
-
-const StatIcon = styled.div<{ $color: string }>`
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  backdrop-filter: blur(10px);
-`;
-
-const StatInfo = styled.div`
-  flex: 1;
-`;
-
-const StatValue = styled.div`
-  font-size: 28px;
-  font-weight: 800;
-  color: white;
-  margin-bottom: 4px;
-  line-height: 1;
-`;
-
-const StatLabel = styled.div`
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 500;
-`;
-
-const ContentGrid = styled.div`
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 32px;
-
-  @media (max-width: 1200px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const MainSection = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-`;
-
-const Sidebar = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-`;
-
-const SectionHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-`;
-
-const SectionTitle = styled.h2`
-  font-size: 20px;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const SectionBadge = styled.span`
-  background: #6366f1;
-  color: white;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 700;
-`;
-
-const EmptyStateCard = styled.div`
-  background: white;
-  border-radius: 20px;
-  padding: 48px 32px;
-  text-align: center;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-  border: 2px dashed #e2e8f0;
-`;
-
-const EmptyIcon = styled.div`
-  color: #94a3b8;
-  margin-bottom: 20px;
-`;
-
-const EmptyTitle = styled.h3`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0 0 12px 0;
-`;
-
-const EmptyDescription = styled.p`
-  color: #64748b;
-  font-size: 16px;
-  margin: 0 0 32px 0;
-  line-height: 1.6;
-`;
-
-const TodayProgressCard = styled.div`
-  background: white;
-  border-radius: 20px;
-  padding: 24px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-`;
-
-const ProgressHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-`;
-
 const ProgressInfo = styled.div`
   display: flex;
   align-items: baseline;
   gap: 8px;
-`;
-
-const ProgressLabel = styled.span`
-  font-size: 16px;
-  font-weight: 600;
-  color: #64748b;
-`;
-
-const ProgressValue = styled.span`
-  font-size: 32px;
-  font-weight: 800;
-  color: #0f172a;
-`;
-
-const ProgressTime = styled.span`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  color: #64748b;
-  font-weight: 500;
-`;
-
-const ProgressBar = styled.div<{ $small?: boolean }>`
-  width: 100%;
-  height: ${props => props.$small ? '6px' : '12px'};
-  background: #f1f5f9;
-  border-radius: ${props => props.$small ? '3px' : '6px'};
-  overflow: hidden;
 `;
 
 const ProgressFill = styled.div<{ $progress: number; $color?: string }>`
@@ -1024,120 +1698,6 @@ const ProgressFill = styled.div<{ $progress: number; $color?: string }>`
     : 'linear-gradient(90deg, #8b5cf6, #6366f1)'};
   border-radius: inherit;
   transition: width 0.5s ease;
-`;
-
-const ActivitiesGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
-`;
-
-const ActivityCardWrapper = styled.div<{
-  $type: string;
-  $completed: boolean;
-  $scheduleColor: string
-}>`
-  background: ${props => props.$completed ? '#f0fdf4' : 'white'};
-  border: 1px solid ${props => props.$completed ? '#10b98140' : '#e2e8f0'};
-  border-left: 4px solid ${props => {
-    if (props.$completed) return '#10b981';
-    switch (props.$type) {
-      case 'text': return '#6366f1';
-      case 'quiz': return '#f59e0b';
-      case 'video': return '#ef4444';
-      case 'checklist': return '#10b981';
-      case 'file': return '#8b5cf6';
-      case 'habit': return '#06b6d4';
-      default: return '#6366f1';
-    }
-  }};
-  border-radius: 12px;
-  padding: 16px;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  color: inherit;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-  position: relative;
-  overflow: hidden;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-    border-color: ${props => {
-    if (props.$completed) return '#10b98160';
-    switch (props.$type) {
-      case 'text': return '#6366f160';
-      case 'quiz': return '#f59e0b60';
-      case 'video': return '#ef444460';
-      case 'checklist': return '#10b98160';
-      case 'file': return '#8b5cf660';
-      case 'habit': return '#06b6d460';
-      default: return '#6366f160';
-    }
-  }};
-    
-    // Efeito de brilho no hover
-    &::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 100%;
-      background: linear-gradient(90deg, 
-        transparent 0%, 
-        ${props => props.$scheduleColor}08 50%, 
-        transparent 100%
-      );
-      pointer-events: none;
-    }
-  }
-`;
-
-const CardHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 4px;
-`;
-
-const ActivityIconWrapper = styled.div<{ $type: string; $completed: boolean }>`
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: ${props => {
-    if (props.$completed) return '#10b98120';
-    switch (props.$type) {
-      case 'text': return '#6366f120';
-      case 'quiz': return '#f59e0b20';
-      case 'video': return '#ef444420';
-      case 'checklist': return '#10b98120';
-      case 'file': return '#8b5cf620';
-      case 'habit': return '#06b6d420';
-      default: return '#6366f120';
-    }
-  }};
-  color: ${props => {
-    if (props.$completed) return '#10b981';
-    switch (props.$type) {
-      case 'text': return '#6366f1';
-      case 'quiz': return '#f59e0b';
-      case 'video': return '#ef4444';
-      case 'checklist': return '#10b981';
-      case 'file': return '#8b5cf6';
-      case 'habit': return '#06b6d4';
-      default: return '#6366f1';
-    }
-  }};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  flex-shrink: 0;
-  transition: all 0.2s ease;
 `;
 
 const QuickToggle = styled.button<{ $completed: boolean }>`
@@ -1188,195 +1748,11 @@ const ActivityTitleRow = styled.div`
   margin-bottom: 6px;
 `;
 
-const ActivityTitle = styled.h3`
-  font-size: 14px;
-  font-weight: 600;
-  color: #0f172a;
-  margin: 0;
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  line-height: 1.3;
-`;
-
 const RequiredIndicator = styled.span`
   color: #dc2626;
   font-size: 16px;
   font-weight: 800;
   line-height: 1;
-`;
-
-const ActivityDescription = styled.p`
-  color: #64748b;
-  font-size: 12px;
-  margin: 0 0 10px 0;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-`;
-
-const ActivityMeta = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 8px;
-`;
-
-const MetaItem = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: #64748b;
-  font-weight: 500;
-  
-  svg {
-    color: #94a3b8;
-  }
-`;
-
-const ScheduleBadge = styled.span<{ $color: string }>`
-  font-size: 11px;
-  font-weight: 600;
-  color: ${props => props.$color};
-  background: ${props => props.$color}15;
-  padding: 3px 8px;
-  border-radius: 12px;
-`;
-
-const CardFooter = styled.div`
-  border-top: 1px solid #f1f5f9;
-  padding-top: 12px;
-  margin-top: 8px;
-`;
-
-const ActionButtons = styled.div`
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-`;
-
-
-const DetailButton = styled(Link) <{ $type: string }>`
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  justify-content: center;
-  background: ${props => {
-    switch (props.$type) {
-      case 'text': return '#6366f1';
-      case 'quiz': return '#f59e0b';
-      case 'video': return '#ef4444';
-      case 'checklist': return '#10b981';
-      case 'file': return '#8b5cf6';
-      case 'habit': return '#06b6d4';
-      default: return '#6366f1';
-    }
-  }};
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  text-decoration: none;
-  transition: all 0.2s ease;
-  cursor: pointer;
-  
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    opacity: 0.9;
-  }
-`;
-
-const InstructionsButton = styled.button`
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: #f1f5f9;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-  
-  &:hover {
-    background: #e2e8f0;
-    color: #374151;
-    transform: translateY(-1px);
-  }
-`;
-
-const CompletionStatus = styled.div<{ $completed: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: ${props => props.$completed ? '#10b981' : '#94a3b8'};
-  font-weight: 500;
-  
-  svg {
-    flex-shrink: 0;
-  }
-  
-  span {
-    flex: 1;
-  }
-`;
-
-const QuickActions = styled.div`
-  display: flex;
-  gap: 16px;
-  margin-top: 16px;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-  }
-`;
-
-const ActionButton = styled(Link) <{ $primary?: boolean }>`
-  flex: ${props => props.$primary ? 2 : 1};
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: ${props => props.$primary
-    ? 'linear-gradient(135deg, #6366f1, #4f46e5)'
-    : 'white'};
-  color: ${props => props.$primary ? 'white' : '#6366f1'};
-  text-decoration: none;
-  padding: 16px 24px;
-  border-radius: 14px;
-  font-weight: 700;
-  font-size: 15px;
-  transition: all 0.3s ease;
-  justify-content: center;
-  border: ${props => props.$primary ? 'none' : '2px solid #e2e8f0'};
-  box-shadow: ${props => props.$primary
-    ? '0 4px 20px rgba(99, 102, 241, 0.3)'
-    : '0 4px 16px rgba(0, 0, 0, 0.05)'};
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: ${props => props.$primary
-    ? '0 8px 32px rgba(99, 102, 241, 0.4)'
-    : '0 8px 24px rgba(0, 0, 0, 0.1)'};
-  }
-`;
-
-const SidebarSection = styled.div`
-  background: white;
-  border-radius: 20px;
-  padding: 24px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
 `;
 
 const ViewAllLink = styled(Link)`
@@ -1388,50 +1764,6 @@ const ViewAllLink = styled(Link)`
 
   &:hover {
     background: #f1f5f9;
-  }
-`;
-
-const EmptySidebarState = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 32px 20px;
-  color: #94a3b8;
-  text-align: center;
-
-  svg {
-    opacity: 0.5;
-  }
-
-  span {
-    font-size: 14px;
-    font-weight: 500;
-  }
-`;
-
-const ScheduleList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-`;
-
-const ScheduleItem = styled(Link)`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 12px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  color: inherit;
-
-  &:hover {
-    transform: translateX(4px);
-    border-color: #6366f1;
-    background: #eef2ff;
   }
 `;
 
@@ -1448,16 +1780,6 @@ const ScheduleInfo = styled.div`
   min-width: 0;
 `;
 
-const ScheduleName = styled.div`
-  font-size: 14px;
-  font-weight: 600;
-  color: #0f172a;
-  margin-bottom: 6px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
-
 const ScheduleProgress = styled.div`
   display: flex;
   align-items: center;
@@ -1471,122 +1793,6 @@ const ProgressPercentage = styled.span`
   min-width: 32px;
 `;
 
-const AchievementsList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-`;
-
-const AchievementItem = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 12px;
-  background: #fefce8;
-  border: 1px solid #fde047;
-`;
-
-const AchievementIcon = styled.div`
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #f59e0b, #fbbf24);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-`;
-
 const AchievementInfo = styled.div`
   flex: 1;
-`;
-
-const AchievementName = styled.div`
-  font-weight: 600;
-  color: #0f172a;
-  margin-bottom: 2px;
-  font-size: 14px;
-`;
-
-const AchievementPoints = styled.div`
-  font-size: 12px;
-  color: #10b981;
-  font-weight: 700;
-`;
-
-const TipsSection = styled.div`
-  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-  border-radius: 20px;
-  padding: 24px;
-  border: 1px solid #a7f3d0;
-`;
-
-const TipsHeader = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  font-weight: 700;
-  color: #065f46;
-  font-size: 16px;
-`;
-
-const TipsContent = styled.p`
-  color: #047857;
-  font-size: 14px;
-  line-height: 1.5;
-  margin: 0;
-  font-style: italic;
-`;
-
-const NotificationsSection = styled.div`
-  background: #fef3c7;
-  border-radius: 20px;
-  padding: 24px;
-  border: 1px solid #fcd34d;
-`;
-
-const NotificationsHeader = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-  font-weight: 700;
-  color: #92400e;
-  font-size: 16px;
-`;
-
-const NotificationsList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
-
-const NotificationItem = styled.div`
-  font-size: 14px;
-  color: #92400e;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.5);
-  border-radius: 8px;
-  line-height: 1.4;
-`;
-
-// Loading
-const LoadingContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 120px 20px;
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  min-height: 100vh;
-`;
-
-const LoadingText = styled.p`
-  margin-top: 16px;
-  color: #64748b;
-  font-size: 16px;
-  font-weight: 500;
 `;

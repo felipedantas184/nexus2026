@@ -114,7 +114,7 @@ export default function StudentSidebar({ open, student, onNavigate }: StudentSid
 const Container = styled.nav<{ open: boolean }>`
   background: linear-gradient(180deg, #6d28d9 0%, #4c1d95 100%);
   width: 280px;
-  height: 100vh;
+  max-height: 100vh;
   padding: 24px 0;
   display: flex;
   flex-direction: column;
@@ -159,26 +159,26 @@ const UserHeader = styled.div`
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 18px;
+  padding: 8px;
   background: rgba(255, 255, 255, 0.12);
   border-radius: 16px;
-  margin-bottom: 28px;
+  margin-bottom: 16px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(6px);
 `;
 
 // Avatar com glow
 const UserAvatar = styled.div`
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.22);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 800;
   color: white;
-  font-size: 18px;
+  font-size: 14px;
   border: 2px solid rgba(255, 255, 255, 0.35);
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
 `;
@@ -213,7 +213,7 @@ const StatsSection = styled.div`
 const StreakCard = styled.div`
   background: rgba(255, 255, 255, 0.12);
   border-radius: 14px;
-  padding: 18px;
+  padding: 8px;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -257,7 +257,7 @@ const QuickStats = styled.div`
 const QuickStat = styled.div`
   background: rgba(255, 255, 255, 0.12);
   border-radius: 10px;
-  padding: 14px;
+  padding: 8px;
   text-align: center;
   border: 1px solid rgba(255, 255, 255, 0.16);
   backdrop-filter: blur(5px);
@@ -327,7 +327,6 @@ const TodayProgress = styled.div`
   background: rgba(255, 255, 255, 0.12);
   border-radius: 14px;
   padding: 18px;
-  margin-bottom: 28px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(6px);
 `;
