@@ -18,14 +18,11 @@ import { firestore } from '../config';
 import { WeeklySchedule, WeekDaySchedule, ScheduleActivity } from '@/types/schedule.types';
 
 const SCHEDULES_COLLECTION = 'schedules';
-const STUDENT_SCHEDULES_COLLECTION = 'studentSchedules';
 
 export const schedulesService = {
   // ===== CRUD DE CRONOGRAMAS =====
   
-  /**
-   * Buscar todos os cronogramas de um profissional
-   */
+  /** Buscar todos os cronogramas de um profissional */
   async getProfessionalSchedules(professionalId: string): Promise<WeeklySchedule[]> {
     try {
       const schedulesQuery = query(
@@ -47,9 +44,7 @@ export const schedulesService = {
     }
   },
 
-  /**
-   * Buscar cronograma por ID
-   */
+  /** Buscar cronograma por ID */
   async getScheduleById(scheduleId: string): Promise<WeeklySchedule | null> {
     try {
       const scheduleDoc = await getDoc(doc(firestore, SCHEDULES_COLLECTION, scheduleId));
@@ -70,9 +65,7 @@ export const schedulesService = {
     }
   },
 
-  /**
-   * Criar novo cronograma
-   */
+  /** Criar novo cronograma */
   async createSchedule(scheduleData: Omit<WeeklySchedule, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     try {
       const scheduleWithTimestamps = {
@@ -89,9 +82,7 @@ export const schedulesService = {
     }
   },
 
-  /**
-   * Atualizar cronograma
-   */
+  /** Atualizar cronograma */
   async updateSchedule(scheduleId: string, updates: Partial<WeeklySchedule>): Promise<void> {
     try {
       const scheduleRef = doc(firestore, SCHEDULES_COLLECTION, scheduleId);
@@ -105,9 +96,7 @@ export const schedulesService = {
     }
   },
 
-  /**
-   * Deletar cronograma
-   */
+  /** Deletar cronograma */
   async deleteSchedule(scheduleId: string): Promise<void> {
     try {
       await deleteDoc(doc(firestore, SCHEDULES_COLLECTION, scheduleId));
@@ -117,9 +106,7 @@ export const schedulesService = {
     }
   },
 
-  /**
-   * Buscar estatísticas de progresso de um aluno em um cronograma
-   */
+  /** Buscar estatísticas de progresso de um aluno em um cronograma */
   async getScheduleProgressStats(
     scheduleId: string,
     studentId: string
@@ -205,9 +192,7 @@ export const schedulesService = {
     }
   },
 
-  /**
-   * Buscar histórico de conclusões de um aluno
-   */
+  /** Buscar histórico de conclusões de um aluno */
   async getStudentCompletionHistory(
     studentId: string,
     days: number = 7
@@ -270,9 +255,7 @@ export const schedulesService = {
 
   // ===== GESTÃO DE ATIVIDADES DOS DIAS =====
 
-  /**
-   * Adicionar atividade a um dia específico
-   */
+  /** Adicionar atividade a um dia específico */
   async addActivityToDay(
     scheduleId: string, 
     day: WeekDaySchedule['day'], 
@@ -314,9 +297,7 @@ export const schedulesService = {
     }
   },
 
-  /**
-   * Remover atividade de um dia
-   */
+  /** Remover atividade de um dia */
   async removeActivityFromDay(
     scheduleId: string, 
     day: WeekDaySchedule['day'], 
@@ -351,9 +332,7 @@ export const schedulesService = {
     }
   },
 
-  /**
-   * Atualizar atividade em um dia
-   */
+  /** Atualizar atividade em um dia */
   async updateActivityInDay(
     scheduleId: string,
     day: WeekDaySchedule['day'],
@@ -391,9 +370,7 @@ export const schedulesService = {
 
   // ===== ATRIBUIÇÃO A ALUNOS =====
 
-  /**
-   * Atribuir cronograma a alunos
-   */
+  /** Atribuir cronograma a alunos */
   async assignScheduleToStudents(
     scheduleId: string,
     studentIds: string[]
@@ -411,9 +388,7 @@ export const schedulesService = {
     }
   },
 
-  /**
-   * Remover atribuição de cronograma
-   */
+  /** Remover atribuição de cronograma */
   async removeScheduleAssignment(
     scheduleId: string,
     studentId: string
@@ -433,9 +408,7 @@ export const schedulesService = {
 
   // ===== PARA O ALUNO =====
 
-  /**
-   * Buscar cronogramas atribuídos a um aluno
-   */
+  /** Buscar cronogramas atribuídos a um aluno */
   async getStudentSchedules(studentId: string): Promise<WeeklySchedule[]> {
     try {
       const schedulesQuery = query(

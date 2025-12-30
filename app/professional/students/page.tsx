@@ -110,11 +110,9 @@ export default function StudentsPage() {
                 <StudentName>{student.name}</StudentName>
                 <StudentEmail>{student.email}</StudentEmail>
               </StudentInfo>
-              <StudentOrigin $origin={student.personalInfo.origin}>
-                {student.personalInfo.origin === 'fracta' ? 'Fracta' : 'Particular'}
-              </StudentOrigin>
             </StudentHeader>
 
+            {/**
             <StudentDetails>
               <DetailItem>
                 <FaSchool size={12} />
@@ -143,6 +141,7 @@ export default function StudentsPage() {
             <StudentStatus $active={student.isActive}>
               {student.isActive ? 'Ativo' : 'Inativo'}
             </StudentStatus>
+             */}
           </StudentCard>
         ))}
       </StudentsGrid>

@@ -29,8 +29,6 @@ import {
 import {
   FaGraduationCap,
   FaBookOpen,
-  FaUsers,
-  FaChild
 } from 'react-icons/fa6';
 import { createStudent } from '@/lib/firebase/authService';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -63,26 +61,14 @@ const slideInFromLeft = keyframes`
   }
 `;
 
-const pulse = keyframes`
-  0%, 100% { 
-    transform: scale(1); 
-    opacity: 1; 
-  }
-  50% { 
-    transform: scale(1.05); 
-    opacity: 0.9; 
-  }
-`;
-
-const bounce = keyframes`
-  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-  40% { transform: translateY(-10px); }
-  60% { transform: translateY(-5px); }
-`;
-
 export default function StudentRegister() {
   const router = useRouter();
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -94,12 +80,6 @@ export default function StudentRegister() {
     school: '',
     grade: ''
   });
-
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(1);
 
   // Formatar CPF enquanto digita
   const formatCPF = (value: string) => {
@@ -122,9 +102,9 @@ export default function StudentRegister() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    
+
     let formattedValue = value;
-    
+
     // Formatação em tempo real
     if (name === 'cpf') {
       formattedValue = formatCPF(value);
@@ -134,7 +114,7 @@ export default function StudentRegister() {
       // Garantir formato correto para date input
       formattedValue = value;
     }
-    
+
     setFormData(prev => ({ ...prev, [name]: formattedValue }));
     setError('');
   };
@@ -217,7 +197,7 @@ export default function StudentRegister() {
       router.push('/student-login');
     } catch (error: any) {
       console.error('Erro no cadastro do aluno:', error);
-      
+
       // Mensagens de erro mais amigáveis
       if (error.code === 'auth/email-already-in-use') {
         setError('Este e-mail já está cadastrado. Use outro e-mail ou faça login.');
@@ -249,16 +229,16 @@ export default function StudentRegister() {
 
   const getPasswordStrength = (password: string) => {
     if (!password) return { score: 0, label: 'Vazio', color: '#e5e7eb' };
-    
+
     let score = 0;
     if (password.length >= 6) score += 1;
     if (password.length >= 8) score += 1;
     if (/[A-Z]/.test(password)) score += 1;
     if (/[0-9]/.test(password)) score += 1;
-    
+
     const labels = ['Muito fraca', 'Fraca', 'Média', 'Boa', 'Forte'];
     const colors = ['#ef4444', '#f97316', '#f59e0b', '#10b981', '#059669'];
-    
+
     return {
       score,
       label: labels[score],
@@ -297,13 +277,13 @@ export default function StudentRegister() {
                 Cadastro do <span>Aluno</span>
               </BrandName>
             </BrandLogo>
-            
+
             <BrandTitle>
               Comece sua <Highlight>Jornada</Highlight> de Aprendizado
             </BrandTitle>
-            
+
             <BrandDescription>
-              Cadastre-se na plataforma gamificada que torna o acompanhamento 
+              Cadastre-se na plataforma gamificada que torna o acompanhamento
               terapêutico-educacional uma experiência divertida e motivadora.
             </BrandDescription>
 
@@ -317,7 +297,7 @@ export default function StudentRegister() {
                   <FeatureText>Aprenda brincando com desafios envolventes</FeatureText>
                 </FeatureContent>
               </Feature>
-              
+
               <Feature>
                 <FeatureIcon $color="#f59e0b">
                   <FaTrophy size={20} />
@@ -327,7 +307,7 @@ export default function StudentRegister() {
                   <FeatureText>Colecione badges pelo seu progresso</FeatureText>
                 </FeatureContent>
               </Feature>
-              
+
               <Feature>
                 <FeatureIcon $color="#10b981">
                   <FaChartLine size={20} />
@@ -337,7 +317,7 @@ export default function StudentRegister() {
                   <FeatureText>Veja sua evolução em gráficos coloridos</FeatureText>
                 </FeatureContent>
               </Feature>
-              
+
               <Feature>
                 <FeatureIcon $color="#ec4899">
                   <FaHeart size={20} />
@@ -393,19 +373,19 @@ export default function StudentRegister() {
                 <StepLabel>Segurança & Senha</StepLabel>
               </ProgressStep>
             </ProgressIndicator>
-            
+
             <CardLogo>
               <FaGraduationCap size={32} color="#8b5cf6" />
             </CardLogo>
             <CardTitle>
-              {step === 1 ? 'Dados do Aluno' : 
-               step === 2 ? 'Informações Escolares' : 
-               'Crie sua Senha'}
+              {step === 1 ? 'Dados do Aluno' :
+                step === 2 ? 'Informações Escolares' :
+                  'Crie sua Senha'}
             </CardTitle>
             <CardSubtitle>
               {step === 1 ? 'Informe os dados pessoais do aluno' :
-               step === 2 ? 'Complete as informações da escola' :
-               'Proteja sua conta com uma senha segura'}
+                step === 2 ? 'Complete as informações da escola' :
+                  'Proteja sua conta com uma senha segura'}
             </CardSubtitle>
           </CardHeader>
 
@@ -608,7 +588,7 @@ export default function StudentRegister() {
                     <FaArrowRight size={14} style={{ transform: 'rotate(180deg)' }} />
                     <span>Voltar</span>
                   </BackButton>
-                  
+
                   <NextStepButton type="button" onClick={nextStep} disabled={loading}>
                     <span>Próximo: Criar Senha</span>
                     <FaArrowRight size={16} />
@@ -648,11 +628,11 @@ export default function StudentRegister() {
                       {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
                     </PasswordToggle>
                   </PasswordInput>
-                  
+
                   <PasswordStrength>
                     <StrengthBar>
-                      <StrengthFill 
-                        $strength={passwordStrength.score} 
+                      <StrengthFill
+                        $strength={passwordStrength.score}
                         $color={passwordStrength.color}
                       />
                     </StrengthBar>
@@ -660,7 +640,7 @@ export default function StudentRegister() {
                       {passwordStrength.label}
                     </StrengthLabel>
                   </PasswordStrength>
-                  
+
                   <PasswordTips>
                     <PasswordTip $valid={formData.password.length >= 6}>
                       <FaCheckCircle size={12} />
@@ -702,7 +682,7 @@ export default function StudentRegister() {
                       {showConfirmPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
                     </PasswordToggle>
                   </PasswordInput>
-                  
+
                   <PasswordMatch $match={formData.password === formData.confirmPassword && formData.password.length > 0}>
                     <FaCheckCircle size={14} />
                     <span>Senhas {formData.password === formData.confirmPassword ? 'coincidem ✓' : 'não coincidem'}</span>
@@ -716,19 +696,19 @@ export default function StudentRegister() {
                       Sou responsável pelo aluno e autorizo seu cadastro na plataforma Nexus Platform
                     </TermsLabel>
                   </TermsCheckbox>
-                  
+
                   <TermsCheckbox>
                     <input type="checkbox" id="terms" required />
                     <TermsLabel htmlFor="terms">
-                      Concordo com os <TermsLink href="/terms">Termos de Uso</TermsLink> e 
+                      Concordo com os <TermsLink href="/terms">Termos de Uso</TermsLink> e
                       <TermsLink href="/privacy"> Política de Privacidade</TermsLink>
                     </TermsLabel>
                   </TermsCheckbox>
-                  
+
                   <SafetyNote>
                     <FaShieldAlt size={14} color="#8b5cf6" />
                     <span>
-                      Dados protegidos conforme a LGPD. A plataforma é um ambiente seguro 
+                      Dados protegidos conforme a LGPD. A plataforma é um ambiente seguro
                       para menores, supervisionado por profissionais.
                     </span>
                   </SafetyNote>
@@ -739,7 +719,7 @@ export default function StudentRegister() {
                     <FaArrowRight size={14} style={{ transform: 'rotate(180deg)' }} />
                     <span>Voltar</span>
                   </BackButton>
-                  
+
                   <RegisterButton type="submit" disabled={loading} $loading={loading}>
                     {loading ? (
                       <>
@@ -766,7 +746,7 @@ export default function StudentRegister() {
                 Faça Login Aqui
               </LoginLink>
             </LoginPrompt>
-            
+
             <SupportSection>
               <SupportText>Dúvidas sobre o cadastro?</SupportText>
               <SupportLink href="mailto:aluno@nexus.com">

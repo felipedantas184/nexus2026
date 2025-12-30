@@ -3,20 +3,14 @@ import {
   doc,
   getDocs,
   getDoc,
-  addDoc,
   updateDoc,
   query,
   where,
   orderBy,
   serverTimestamp,
-  arrayUnion,
-  setDoc // 🔥 ADICIONAR
 } from 'firebase/firestore';
 import { Student, Professional } from '@/types';
 import { firestore } from '../config';
-import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { auth } from '../config';
-import { studentCreationService } from './studentCreationService';
 
 const STUDENTS_COLLECTION = 'students';
 const PROFESSIONALS_COLLECTION = 'professionals';
@@ -75,21 +69,6 @@ export const studentsService = {
       console.error('Erro ao buscar aluno:', error);
       throw new Error('Não foi possível carregar o aluno');
     }
-  },
-
-  // Criar novo aluno
-  async createStudent(
-    studentData: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>,
-    password: string,
-    currentUserEmail: string,
-    currentUserPassword: string
-  ): Promise<{ studentId: string }> {
-    return studentCreationService.createStudent(
-      studentData,
-      password,
-      currentUserEmail,
-      currentUserPassword
-    );
   },
 
   // Atualizar aluno

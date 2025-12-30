@@ -1147,7 +1147,7 @@ const ActivityCardWrapper = styled.div<{
   $completed: boolean;
   $scheduleColor: string;
 }>`
-  background: ${p => (p.$completed ? "#f9fef9" : "white")};
+  background: ${p => (p.$completed ? "#eaffea" : "white")};
   border: 1px solid #e5e7eb;
   border-radius: 14px;
   padding: 18px;
@@ -1300,7 +1300,7 @@ const DetailButton = styled(Link) <{ $type: string }>`
   transition: 0.2s;
 
   &:hover {
-    background: #e2e8f0;
+    background: #4f52f2;
   }
 `;
 

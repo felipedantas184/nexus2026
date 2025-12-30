@@ -20,10 +20,7 @@ import {
   FaChevronRight,
   FaHandsHelping
 } from 'react-icons/fa';
-import { 
-  FaGraduationCap,
-  FaBrain,
-} from 'react-icons/fa6';
+import { FaGraduationCap} from 'react-icons/fa6';
 import { useAuth } from '@/context/AuthContext';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 

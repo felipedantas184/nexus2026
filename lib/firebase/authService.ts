@@ -80,25 +80,6 @@ export const createProfessional = async (data: ProfessionalRegistrationData) => 
   }
 };
 
-export const loginProfessional = async (email: string, password: string) => {
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    return userCredential.user;
-  } catch (error: any) {
-    console.error('Erro no login:', error);
-
-    if (error.code === 'auth/user-not-found') {
-      throw new Error('Profissional não encontrado.');
-    } else if (error.code === 'auth/wrong-password') {
-      throw new Error('Senha incorreta.');
-    } else if (error.code === 'auth/invalid-email') {
-      throw new Error('E-mail inválido.');
-    } else {
-      throw new Error('Erro ao fazer login. Tente novamente.');
-    }
-  }
-};
-
 export async function createStudent(data: CreateStudentInput) {
   const {
     name,
@@ -130,17 +111,36 @@ export async function createStudent(data: CreateStudentInput) {
     await setDoc(doc(firestore, "students", userId), {
       name,
       email,
-      cpf,
-      birthday,
-      phone,
-      school,
-      grade,
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      isActive: true,
+      personalInfo: {
+        cpf: cpf,
+        birthday: birthday,
+        parentName: '',
+        phone: phone,
+        school: school,
+        grade: grade,
+      },
       medicalInfo: {
         diagnosis: [],
         medications: "",
         notes: "",
       },
+      address: {
+        zipCode: '',
+        street: '',
+        number: '',
+        complement: '',
+        district: '',
+        city: '',
+        state: '',
+      },
+      assignedProfessionals: [],
+      assignedPrograms: [],
+      streak: 0,
+      totalPoints: 0,
+      level: 1,
     });
 
     return { success: true, userId };
@@ -149,86 +149,3 @@ export async function createStudent(data: CreateStudentInput) {
     throw new Error(error.message || "Erro ao criar estudante.");
   }
 }
-
-{/**
-export const loginStudent = async (cpf: string, birthday: string) => {
-  try {
-    // Limpar CPF (remover pontos e traço)
-    const cleanCPF = cpf.replace(/\D/g, '');
-    
-    // Converter data para formato YYYY-MM-DD
-    const [day, month, year] = birthday.split('/');
-    const formattedBirthday = `${year}-${month}-${day}`;
-
-    console.log('Buscando aluno:', { cleanCPF, formattedBirthday });
-
-    // Buscar aluno no Firestore pelo CPF e data de nascimento
-    const studentsQuery = query(
-      collection(firestore, 'students'),
-      where('personalInfo.cpf', '==', cleanCPF),
-      where('personalInfo.birthday', '==', formattedBirthday),
-      where('isActive', '==', true)
-    );
-
-    const snapshot = await getDocs(studentsQuery);
-    
-    if (snapshot.empty) {
-      throw new Error('Aluno não encontrado ou credenciais inválidas.');
-    }
-
-    // Pegar o primeiro aluno encontrado (deveria ser único)
-    const studentDoc = snapshot.docs[0];
-    const studentData = studentDoc.data();
-    
-    console.log('Aluno encontrado:', studentData);
-
-    // Retornar dados do aluno (sem senha, pois não usamos auth do Firebase para alunos)
-    return {
-      id: studentDoc.id,
-      ...studentData,
-      createdAt: studentData.createdAt?.toDate(),
-      updatedAt: studentData.updatedAt?.toDate()
-    };
-  } catch (error: any) {
-    console.error('Erro no login do aluno:', error);
-    
-    if (error.code === 'permission-denied') {
-      throw new Error('Erro de permissão. Contate o administrador.');
-    } else if (error.message.includes('não encontrado')) {
-      throw new Error('Aluno não encontrado. Verifique o CPF e data de nascimento.');
-    } else {
-      throw new Error('Erro ao fazer login. Tente novamente.');
-    }
-  }
-};
- */}
-
-// Método auxiliar para buscar aluno por ID
-export const getStudentById = async (studentId: string) => {
-  try {
-    const studentDoc = await getDoc(doc(firestore, 'students', studentId));
-
-    if (!studentDoc.exists()) {
-      return null;
-    }
-
-    return {
-      id: studentDoc.id,
-      ...studentDoc.data(),
-      createdAt: studentDoc.data().createdAt?.toDate(),
-      updatedAt: studentDoc.data().updatedAt?.toDate()
-    };
-  } catch (error) {
-    console.error('Erro ao buscar aluno:', error);
-    return null;
-  }
-};
-
-export const logoutUser = async () => {
-  try {
-    await signOut(auth);
-  } catch (error: any) {
-    console.error('Erro ao fazer logout:', error);
-    throw new Error('Erro ao sair da conta.');
-  }
-};
