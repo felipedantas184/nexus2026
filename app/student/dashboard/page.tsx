@@ -38,6 +38,8 @@ import { assignmentService } from '@/lib/firebase/services/assignmentsService';
 import { useAuth } from '@/context/AuthContext';
 import { FaCheck } from 'react-icons/fa6';
 import { useScheduleProgress } from '@/hooks/useScheduleProgress';
+import { gad7Service } from '@/lib/firebase/services/gad7Service';
+import GAD7Modal from '@/components/assessments/GAD7Modal';
 
 interface ProgramWithProgress {
   program: Program;
@@ -403,6 +405,45 @@ export default function StudentDashboard() {
     );
   }
 
+  const [showGAD7Modal, setShowGAD7Modal] = useState(false);
+  const [assessmentInfo, setAssessmentInfo] = useState<{
+    required: boolean;
+    reason: string;
+    daysOverdue?: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      checkAssessmentRequirement();
+    }
+  }, [user]);
+
+  const checkAssessmentRequirement = async () => {
+    try {
+      const result = await gad7Service.checkIfAssessmentRequired(user?.id || '');
+
+      if (result.required) {
+        setAssessmentInfo({
+          required: true,
+          reason: result.reason,
+          daysOverdue: result.reason === 'overdue' ? Math.abs(result.daysUntilNext || 0) : undefined
+        });
+
+        // Mostrar modal após 1 segundo (para não ser muito agressivo)
+        setTimeout(() => {
+          setShowGAD7Modal(true);
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('Erro ao verificar avaliação:', error);
+    }
+  };
+
+  const handleAssessmentComplete = (score: number, severity: string) => {
+    console.log('Avaliação GAD-7 concluída:', { score, severity });
+    // Aqui você pode atualizar UI, mostrar notificação, etc.
+  };
+
   if (isLoading) {
     return (
       <LoadingContainer>
@@ -413,322 +454,334 @@ export default function StudentDashboard() {
   }
 
   return (
-    <Container>
-      {/* Header com Boas-vindas Personalizada */}
-      <WelcomeBanner>
-        <WelcomeContent>
-          <WelcomeHeader>
-            <WelcomeTitle>
-              {getTimeOfDayGreeting()}, {student?.name?.split(' ')[0] || 'Estudante'}!
-              <CrownIcon>
-                <FaCrown />
-              </CrownIcon>
-            </WelcomeTitle>
-            <WelcomeSubtitle>{getMotivationalMessage()}</WelcomeSubtitle>
-          </WelcomeHeader>
+    <>
+      <Container>
+        {/* Header com Boas-vindas Personalizada */}
+        <WelcomeBanner>
+          <WelcomeContent>
+            <WelcomeHeader>
+              <WelcomeTitle>
+                {getTimeOfDayGreeting()}, {student?.name?.split(' ')[0] || 'Estudante'}!
+                <CrownIcon>
+                  <FaCrown />
+                </CrownIcon>
+              </WelcomeTitle>
+              <WelcomeSubtitle>{getMotivationalMessage()}</WelcomeSubtitle>
+            </WelcomeHeader>
 
-          <DateDisplay>
-            <FaCalendarDay />
-            {todaysDate.toLocaleDateString('pt-BR', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric'
-            })}
-          </DateDisplay>
-        </WelcomeContent>
+            <DateDisplay>
+              <FaCalendarDay />
+              {todaysDate.toLocaleDateString('pt-BR', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+              })}
+            </DateDisplay>
+          </WelcomeContent>
 
-        <StatsOverview>
-          <StatCard $color="#6366f1" $gradient>
-            <StatIcon $color="#6366f1">
-              <FaTrophy />
-            </StatIcon>
-            <StatInfo>
-              <StatValue>{dashboardStats.totalPoints}</StatValue>
-              <StatLabel>Pontos Totais</StatLabel>
-            </StatInfo>
-          </StatCard>
+          <StatsOverview>
+            <StatCard $color="#6366f1" $gradient>
+              <StatIcon $color="#6366f1">
+                <FaTrophy />
+              </StatIcon>
+              <StatInfo>
+                <StatValue>{dashboardStats.totalPoints}</StatValue>
+                <StatLabel>Pontos Totais</StatLabel>
+              </StatInfo>
+            </StatCard>
 
-          <StatCard $color="#10b981" $gradient>
-            <StatIcon $color="#10b981">
-              <FaFire />
-            </StatIcon>
-            <StatInfo>
-              <StatValue>{dashboardStats.currentStreak}</StatValue>
-              <StatLabel>Dias Seguidos</StatLabel>
-            </StatInfo>
-          </StatCard>
+            <StatCard $color="#10b981" $gradient>
+              <StatIcon $color="#10b981">
+                <FaFire />
+              </StatIcon>
+              <StatInfo>
+                <StatValue>{dashboardStats.currentStreak}</StatValue>
+                <StatLabel>Dias Seguidos</StatLabel>
+              </StatInfo>
+            </StatCard>
 
-          <StatCard $color="#8b5cf6" $gradient>
-            <StatIcon $color="#8b5cf6">
-              <FaChartLine />
-            </StatIcon>
-            <StatInfo>
-              <StatValue>Nível {dashboardStats.currentLevel}</StatValue>
-              <StatLabel>Seu Nível</StatLabel>
-            </StatInfo>
-          </StatCard>
+            <StatCard $color="#8b5cf6" $gradient>
+              <StatIcon $color="#8b5cf6">
+                <FaChartLine />
+              </StatIcon>
+              <StatInfo>
+                <StatValue>Nível {dashboardStats.currentLevel}</StatValue>
+                <StatLabel>Seu Nível</StatLabel>
+              </StatInfo>
+            </StatCard>
 
-          <StatCard $color="#f59e0b" $gradient>
-            <StatIcon $color="#f59e0b">
-              <FaCheckCircle />
-            </StatIcon>
-            <StatInfo>
-              <StatValue>{dashboardStats.todayCompletion}%</StatValue>
-              <StatLabel>Hoje</StatLabel>
-            </StatInfo>
-          </StatCard>
-        </StatsOverview>
-      </WelcomeBanner>
+            <StatCard $color="#f59e0b" $gradient>
+              <StatIcon $color="#f59e0b">
+                <FaCheckCircle />
+              </StatIcon>
+              <StatInfo>
+                <StatValue>{dashboardStats.todayCompletion}%</StatValue>
+                <StatLabel>Hoje</StatLabel>
+              </StatInfo>
+            </StatCard>
+          </StatsOverview>
+        </WelcomeBanner>
 
-      <ContentGrid>
-        {/* SEÇÃO PRINCIPAL: ATIVIDADES DE HOJE */}
-        <MainSection>
-          <SectionHeader>
-            <SectionTitle>
-              <FaCalendarDay size={20} />
-              Suas Atividades de Hoje
-            </SectionTitle>
-            <SectionBadge>
-              {todaysActivities.filter(a => a.completed).length}/{todaysActivities.length}
-            </SectionBadge>
-          </SectionHeader>
+        <ContentGrid>
+          {/* SEÇÃO PRINCIPAL: ATIVIDADES DE HOJE */}
+          <MainSection>
+            <SectionHeader>
+              <SectionTitle>
+                <FaCalendarDay size={20} />
+                Suas Atividades de Hoje
+              </SectionTitle>
+              <SectionBadge>
+                {todaysActivities.filter(a => a.completed).length}/{todaysActivities.length}
+              </SectionBadge>
+            </SectionHeader>
 
-          {todaysActivities.length === 0 ? (
-            <EmptyStateCard>
-              <EmptyIcon>
-                <FaLightbulb size={48} />
-              </EmptyIcon>
-              <EmptyTitle>Dia de descanso! 🎉</EmptyTitle>
-              <EmptyDescription>
-                Você não tem atividades programadas para hoje. Aproveite para revisar conteúdos ou explorar novos aprendizados!
-              </EmptyDescription>
-              <QuickActions>
-                <ActionButton href="/student/programs">
-                  <FaBook size={16} />
-                  Explorar Programas
-                </ActionButton>
-                <ActionButton href="/student/schedules">
+            {todaysActivities.length === 0 ? (
+              <EmptyStateCard>
+                <EmptyIcon>
+                  <FaLightbulb size={48} />
+                </EmptyIcon>
+                <EmptyTitle>Dia de descanso! 🎉</EmptyTitle>
+                <EmptyDescription>
+                  Você não tem atividades programadas para hoje. Aproveite para revisar conteúdos ou explorar novos aprendizados!
+                </EmptyDescription>
+                <QuickActions>
+                  <ActionButton href="/student/programs">
+                    <FaBook size={16} />
+                    Explorar Programas
+                  </ActionButton>
+                  <ActionButton href="/student/schedules">
+                    <FaCalendar size={16} />
+                    Ver Cronogramas
+                  </ActionButton>
+                </QuickActions>
+              </EmptyStateCard>
+            ) : (
+              <>
+                <TodayProgressCard>
+                  <ProgressHeader>
+                    <ProgressInfo>
+                      <ProgressLabel>Progresso do Dia</ProgressLabel>
+                      <ProgressValue>{dashboardStats.todayCompletion}%</ProgressValue>
+                    </ProgressInfo>
+                    <ProgressTime>
+                      <FaClock size={14} />
+                      {todaysActivities.reduce((total, a) => total + a.estimatedTime, 0)} min total
+                    </ProgressTime>
+                  </ProgressHeader>
+                  <ProgressBar>
+                    <ProgressFill $progress={dashboardStats.todayCompletion} />
+                  </ProgressBar>
+                </TodayProgressCard>
+
+                <ActivitiesGrid>
+                  {todaysActivities.map((activity) => (
+                    <ActivityCardWrapper
+                      key={`${activity.scheduleId}-${activity.id}`}
+                      $type={activity.type}
+                      $completed={activity.completed}
+                      $scheduleColor={activity.scheduleColor}
+                    >
+                      <CardHeader>
+                        <HeaderLeft>
+                          <ActivityIconWrapper $type={activity.type} $completed={activity.completed}>
+                            {getActivityIcon(activity.type)}
+                          </ActivityIconWrapper>
+
+                          <HeaderInfo>
+                            <ActivityTitleRow>
+                              <ActivityTitle>
+                                {activity.activity.title}
+                              </ActivityTitle>
+
+                              {activity.activity.isRequired && (
+                                <RequiredDot title="Atividade obrigatória" />
+                              )}
+                            </ActivityTitleRow>
+
+                            <ScheduleBadge $color={activity.scheduleColor}>
+                              {activity.scheduleTitle}
+                            </ScheduleBadge>
+                          </HeaderInfo>
+                        </HeaderLeft>
+
+                        <DashboardActivityToggle
+                          activity={activity}
+                          onToggle={() => handleActivityToggleInDashboard(activity)}
+                        />
+                      </CardHeader>
+
+                      <ActivityMeta>
+                        <MetaItem><FaClock size={10} /> {activity.estimatedTime}min</MetaItem>
+                        <MetaItem><FaStar size={10} /> {activity.points}pts</MetaItem>
+                      </ActivityMeta>
+
+                      <CardFooter>
+                        <ActionButtons>
+                          <DetailButton
+                            href={`/student/schedules/${activity.scheduleId}/activities/${activity.id}`}
+                            $type={activity.type}
+                          >
+                            <FaPlay size={12} />
+                            Abrir
+                          </DetailButton>
+                        </ActionButtons>
+                        {activity.completed && (
+                          <CompletionStatus $completed={activity.completed}>
+                            <FaCheck size={11} />
+                            Concluída
+                          </CompletionStatus>
+                        )}
+                      </CardFooter>
+                    </ActivityCardWrapper>
+
+                  ))}
+                </ActivitiesGrid>
+
+                <QuickActions>
+                  <ActionButton href="/student/schedules" $primary>
+                    <FaCalendarDay size={16} />
+                    Ver Cronograma Completo
+                  </ActionButton>
+                  <ActionButton href="/student/programs">
+                    <FaBook size={16} />
+                    Meus Programas
+                  </ActionButton>
+                </QuickActions>
+              </>
+            )}
+          </MainSection>
+
+          {/* COLUNA LATERAL: RESUMO E RECURSOS */}
+          <Sidebar>
+            {/* RESUMO DE CRONOGRAMAS */}
+            <SidebarSection>
+              <SectionHeader>
+                <SectionTitle>
                   <FaCalendar size={16} />
-                  Ver Cronogramas
-                </ActionButton>
-              </QuickActions>
-            </EmptyStateCard>
-          ) : (
-            <>
-              <TodayProgressCard>
-                <ProgressHeader>
-                  <ProgressInfo>
-                    <ProgressLabel>Progresso do Dia</ProgressLabel>
-                    <ProgressValue>{dashboardStats.todayCompletion}%</ProgressValue>
-                  </ProgressInfo>
-                  <ProgressTime>
-                    <FaClock size={14} />
-                    {todaysActivities.reduce((total, a) => total + a.estimatedTime, 0)} min total
-                  </ProgressTime>
-                </ProgressHeader>
-                <ProgressBar>
-                  <ProgressFill $progress={dashboardStats.todayCompletion} />
-                </ProgressBar>
-              </TodayProgressCard>
+                  Meus Cronogramas
+                </SectionTitle>
+                <ViewAllLink href="/student/schedules">
+                  <FaArrowRight size={12} />
+                </ViewAllLink>
+              </SectionHeader>
 
-              <ActivitiesGrid>
-                {todaysActivities.map((activity) => (
-                  <ActivityCardWrapper
-                    key={`${activity.scheduleId}-${activity.id}`}
-                    $type={activity.type}
-                    $completed={activity.completed}
-                    $scheduleColor={activity.scheduleColor}
-                  >
-                    <CardHeader>
-                      <HeaderLeft>
-                        <ActivityIconWrapper $type={activity.type} $completed={activity.completed}>
-                          {getActivityIcon(activity.type)}
-                        </ActivityIconWrapper>
-
-                        <HeaderInfo>
-                          <ActivityTitleRow>
-                            <ActivityTitle>
-                              {activity.activity.title}
-                            </ActivityTitle>
-
-                            {activity.activity.isRequired && (
-                              <RequiredDot title="Atividade obrigatória" />
-                            )}
-                          </ActivityTitleRow>
-
-                          <ScheduleBadge $color={activity.scheduleColor}>
-                            {activity.scheduleTitle}
-                          </ScheduleBadge>
-                        </HeaderInfo>
-                      </HeaderLeft>
-
-                      <DashboardActivityToggle
-                        activity={activity}
-                        onToggle={() => handleActivityToggleInDashboard(activity)}
-                      />
-                    </CardHeader>
-
-                    <ActivityMeta>
-                      <MetaItem><FaClock size={10} /> {activity.estimatedTime}min</MetaItem>
-                      <MetaItem><FaStar size={10} /> {activity.points}pts</MetaItem>
-                    </ActivityMeta>
-
-                    <CardFooter>
-                      <ActionButtons>
-                        <DetailButton
-                          href={`/student/schedules/${activity.scheduleId}/activities/${activity.id}`}
-                          $type={activity.type}
-                        >
-                          <FaPlay size={12} />
-                          Abrir
-                        </DetailButton>
-                      </ActionButtons>
-                      {activity.completed && (
-                        <CompletionStatus $completed={activity.completed}>
-                          <FaCheck size={11} />
-                          Concluída
-                        </CompletionStatus>
-                      )}
-                    </CardFooter>
-                  </ActivityCardWrapper>
-
-                ))}
-              </ActivitiesGrid>
-
-              <QuickActions>
-                <ActionButton href="/student/schedules" $primary>
-                  <FaCalendarDay size={16} />
-                  Ver Cronograma Completo
-                </ActionButton>
-                <ActionButton href="/student/programs">
-                  <FaBook size={16} />
-                  Meus Programas
-                </ActionButton>
-              </QuickActions>
-            </>
-          )}
-        </MainSection>
-
-        {/* COLUNA LATERAL: RESUMO E RECURSOS */}
-        <Sidebar>
-          {/* RESUMO DE CRONOGRAMAS */}
-          <SidebarSection>
-            <SectionHeader>
-              <SectionTitle>
-                <FaCalendar size={16} />
-                Meus Cronogramas
-              </SectionTitle>
-              <ViewAllLink href="/student/schedules">
-                <FaArrowRight size={12} />
-              </ViewAllLink>
-            </SectionHeader>
-
-            {schedules.length === 0 ? (
-              <EmptySidebarState>
-                <FaCalendar size={20} />
-                <span>Nenhum cronograma</span>
-              </EmptySidebarState>
-            ) : (
-              <ScheduleList>
-                {schedules.slice(0, 3).map(schedule => (
-                  <ScheduleItem
-                    key={schedule.id}
-                    href={`/student/schedules/${schedule.id}`}
-                  >
-                    <ScheduleColor $color={schedule.color} />
-                    <ScheduleInfo>
-                      <ScheduleName>{schedule.title}</ScheduleName>
-                      <ScheduleProgress>
-                        <ProgressBar $small>
-                          <ProgressFill
-                            $progress={dashboardStats.scheduleCompletion[schedule.id] || 0}
-                            $color={schedule.color}
-                          />
-                        </ProgressBar>
-                        <ProgressPercentage>
-                          {dashboardStats.scheduleCompletion[schedule.id] || 0}%
-                        </ProgressPercentage>
-                      </ScheduleProgress>
-                    </ScheduleInfo>
-                  </ScheduleItem>
-                ))}
-              </ScheduleList>
-            )}
-          </SidebarSection>
-
-          {/* CONQUISTAS RECENTES */}
-          <SidebarSection>
-            <SectionHeader>
-              <SectionTitle>
-                <FaAward size={16} />
-                Conquistas Recentes
-              </SectionTitle>
-              <ViewAllLink href="/student/achievements">
-                <FaArrowRight size={12} />
-              </ViewAllLink>
-            </SectionHeader>
-
-            {recentAchievements.length === 0 ? (
-              <EmptySidebarState>
-                <FaAward size={20} />
-                <span>Sem conquistas</span>
-              </EmptySidebarState>
-            ) : (
-              <AchievementsList>
-                {recentAchievements.slice(0, 2).map(achievement => (
-                  <AchievementItem key={achievement.id}>
-                    <AchievementIcon>
-                      <achievement.icon size={16} />
-                    </AchievementIcon>
-                    <AchievementInfo>
-                      <AchievementName>{achievement.name}</AchievementName>
-                      <AchievementPoints>+{achievement.points} pontos</AchievementPoints>
-                    </AchievementInfo>
-                  </AchievementItem>
-                ))}
-              </AchievementsList>
-            )}
-          </SidebarSection>
-
-          {/* DICAS DO DIA */}
-          <TipsSection>
-            <TipsHeader>
-              <FaLightbulb size={16} />
-              <span>Dica do Dia</span>
-            </TipsHeader>
-            <TipsContent>
-              "Divida suas atividades em blocos de tempo para manter o foco e a produtividade. O método Pomodoro (25min trabalho / 5min descanso) é uma ótima técnica!"
-            </TipsContent>
-          </TipsSection>
-
-          {/* NOTIFICAÇÕES */}
-          <NotificationsSection>
-            <NotificationsHeader>
-              <FaBell size={16} />
-              <span>Lembretes</span>
-            </NotificationsHeader>
-            <NotificationsList>
-              {todaysActivities.filter(a => !a.completed).length > 0 && (
-                <NotificationItem>
-                  Você tem {todaysActivities.filter(a => !a.completed).length} atividades pendentes para hoje
-                </NotificationItem>
+              {schedules.length === 0 ? (
+                <EmptySidebarState>
+                  <FaCalendar size={20} />
+                  <span>Nenhum cronograma</span>
+                </EmptySidebarState>
+              ) : (
+                <ScheduleList>
+                  {schedules.slice(0, 3).map(schedule => (
+                    <ScheduleItem
+                      key={schedule.id}
+                      href={`/student/schedules/${schedule.id}`}
+                    >
+                      <ScheduleColor $color={schedule.color} />
+                      <ScheduleInfo>
+                        <ScheduleName>{schedule.title}</ScheduleName>
+                        <ScheduleProgress>
+                          <ProgressBar $small>
+                            <ProgressFill
+                              $progress={dashboardStats.scheduleCompletion[schedule.id] || 0}
+                              $color={schedule.color}
+                            />
+                          </ProgressBar>
+                          <ProgressPercentage>
+                            {dashboardStats.scheduleCompletion[schedule.id] || 0}%
+                          </ProgressPercentage>
+                        </ScheduleProgress>
+                      </ScheduleInfo>
+                    </ScheduleItem>
+                  ))}
+                </ScheduleList>
               )}
-              {dashboardStats.currentStreak > 0 && (
-                <NotificationItem>
-                  Sequência de {dashboardStats.currentStreak} dias! Continue assim! 🔥
-                </NotificationItem>
+            </SidebarSection>
+
+            {/* CONQUISTAS RECENTES */}
+            <SidebarSection>
+              <SectionHeader>
+                <SectionTitle>
+                  <FaAward size={16} />
+                  Conquistas Recentes
+                </SectionTitle>
+                <ViewAllLink href="/student/achievements">
+                  <FaArrowRight size={12} />
+                </ViewAllLink>
+              </SectionHeader>
+
+              {recentAchievements.length === 0 ? (
+                <EmptySidebarState>
+                  <FaAward size={20} />
+                  <span>Sem conquistas</span>
+                </EmptySidebarState>
+              ) : (
+                <AchievementsList>
+                  {recentAchievements.slice(0, 2).map(achievement => (
+                    <AchievementItem key={achievement.id}>
+                      <AchievementIcon>
+                        <achievement.icon size={16} />
+                      </AchievementIcon>
+                      <AchievementInfo>
+                        <AchievementName>{achievement.name}</AchievementName>
+                        <AchievementPoints>+{achievement.points} pontos</AchievementPoints>
+                      </AchievementInfo>
+                    </AchievementItem>
+                  ))}
+                </AchievementsList>
               )}
-              {programs.length > 0 && (
-                <NotificationItem>
-                  {programs.filter(p => p.progress > 0 && p.progress < 100).length} programas em andamento
-                </NotificationItem>
-              )}
-            </NotificationsList>
-          </NotificationsSection>
-        </Sidebar>
-      </ContentGrid>
-    </Container>
+            </SidebarSection>
+
+            {/* DICAS DO DIA */}
+            <TipsSection>
+              <TipsHeader>
+                <FaLightbulb size={16} />
+                <span>Dica do Dia</span>
+              </TipsHeader>
+              <TipsContent>
+                "Divida suas atividades em blocos de tempo para manter o foco e a produtividade. O método Pomodoro (25min trabalho / 5min descanso) é uma ótima técnica!"
+              </TipsContent>
+            </TipsSection>
+
+            {/* NOTIFICAÇÕES */}
+            <NotificationsSection>
+              <NotificationsHeader>
+                <FaBell size={16} />
+                <span>Lembretes</span>
+              </NotificationsHeader>
+              <NotificationsList>
+                {todaysActivities.filter(a => !a.completed).length > 0 && (
+                  <NotificationItem>
+                    Você tem {todaysActivities.filter(a => !a.completed).length} atividades pendentes para hoje
+                  </NotificationItem>
+                )}
+                {dashboardStats.currentStreak > 0 && (
+                  <NotificationItem>
+                    Sequência de {dashboardStats.currentStreak} dias! Continue assim! 🔥
+                  </NotificationItem>
+                )}
+                {programs.length > 0 && (
+                  <NotificationItem>
+                    {programs.filter(p => p.progress > 0 && p.progress < 100).length} programas em andamento
+                  </NotificationItem>
+                )}
+              </NotificationsList>
+            </NotificationsSection>
+          </Sidebar>
+        </ContentGrid>
+      </Container>
+      {/* Modal GAD-7 */}
+      {showGAD7Modal && assessmentInfo && (
+        <GAD7Modal
+          isOpen={showGAD7Modal}
+          onClose={() => setShowGAD7Modal(false)}
+          onComplete={handleAssessmentComplete}
+          assessmentType={assessmentInfo.reason as any}
+          daysOverdue={assessmentInfo.daysOverdue}
+        />
+      )}
+    </>
   );
 }
 
@@ -1192,7 +1245,7 @@ const ActivityIconWrapper = styled.div<{ $type: string; $completed: boolean }>`
   transition: all 0.2s ease;
   background: ${props => {
     if (props.$completed) return '#10b98120';
-        switch (props.$type) {
+    switch (props.$type) {
       case 'text':
         return '#6366f120'; // Indigo Claro
       case 'quiz':

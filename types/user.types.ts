@@ -1,4 +1,4 @@
-// types/user.types.ts - ADICIONAR CAMPOS DE SENHA
+// types/user.types.ts
 import { BaseUser } from "./auth.types";
 
 export interface Student extends BaseUser {
